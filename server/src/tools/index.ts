@@ -19,6 +19,8 @@ import { registerLightingTools } from './lighting-tools.js';
 import { registerParticlesTools } from './particles-tools.js';
 import { registerImportExportTools } from './import-export-tools.js';
 import { registerClassdbTools } from './classdb-tools.js';
+import { registerSkillTools } from '../skills/skill-tools.js';
+import { registerExampleTools } from '../skills/example-tools.js';
 
 export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
   registerSceneTools(server, bridge);
@@ -40,4 +42,6 @@ export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
   registerParticlesTools(server, bridge);
   registerImportExportTools(server, bridge);
   registerClassdbTools(server, bridge);
+  registerSkillTools(server);
+  registerExampleTools(server);
 }

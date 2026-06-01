@@ -130,4 +130,30 @@ Target platform: ${platform}`,
       }],
     })
   );
+
+  server.prompt(
+    'godot_skill',
+    'Load a specific Godot skill module for in-depth guidance',
+    {
+      topic: z.string().describe('Godot topic (gdscript, scene, signal, performance, 2d, 3d, ui, physics, animation, audio, networking, export)'),
+    },
+    ({ topic }) => ({
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `Please provide expert-level guidance on the Godot topic: "${topic}"
+
+Use your knowledge of this skill module to:
+1. Explain the core concepts
+2. Provide best practices
+3. Show common patterns with GDScript code
+4. Highlight pitfalls and how to avoid them
+5. Suggest related topics to explore
+
+Topic: ${topic}`,
+        },
+      }],
+    })
+  );
 }

@@ -1,0 +1,304 @@
+{
+  "meta": {
+    "name": "Godot Open Source Game Examples",
+    "description": "Real GDScript code patterns from production open-source Godot games",
+    "total_repositories": 15,
+    "license": "MIT/AGPL-3.0"
+  },
+  "repositories": [
+    {
+      "id": "godot-demo-projects",
+      "name": "Godot Official Demo Projects",
+      "url": "https://github.com/godotengine/godot-demo-projects",
+      "stars": 8800,
+      "license": "MIT",
+      "description": "Official Godot demo collection — 2D, 3D, networking, audio, GUI",
+      "examples": [
+        {
+          "path": "2d/dodge_the_creeps/player.gd",
+          "type": "player_controller_2d",
+          "description": "Simple 2D Area2D player — movement, screen bounds, collision signal",
+          "difficulty": "beginner"
+        },
+        {
+          "path": "2d/dodge_the_creeps/main.gd",
+          "type": "game_manager",
+          "description": "Game loop — spawning, scoring, restart, timer management",
+          "difficulty": "beginner"
+        },
+        {
+          "path": "2d/dodge_the_creeps/mob.gd",
+          "type": "enemy_simple",
+          "description": "Simple enemy — random sprite, off-screen cleanup",
+          "difficulty": "beginner"
+        },
+        {
+          "path": "3d/squash_the_creeps/",
+          "type": "player_controller_3d",
+          "description": "3D CharacterBody3D platformer — gravity, jump, rotation",
+          "difficulty": "beginner"
+        },
+        {
+          "path": "networking/",
+          "type": "multiplayer",
+          "description": "ENet multiplayer peer setup, lobby, synchronization",
+          "difficulty": "advanced"
+        }
+      ]
+    },
+    {
+      "id": "godot-open-rpg",
+      "name": "GDQuest Open RPG",
+      "url": "https://github.com/gdquest-demos/godot-open-rpg",
+      "stars": 2800,
+      "license": "MIT",
+      "description": "Classical turn-based 2D RPG — combat, inventory, party system",
+      "examples": [
+        {
+          "path": "src/combat/battlers/battler.gd",
+          "type": "combat_system",
+          "description": "Turn-based RPG combat — stats, actions, AI, hit/miss, animations",
+          "difficulty": "intermediate"
+        },
+        {
+          "path": "src/common/player.gd",
+          "type": "player_state",
+          "description": "Autoload player singleton — gamepiece management, party state",
+          "difficulty": "intermediate"
+        },
+        {
+          "path": "src/combat/",
+          "type": "state_machine",
+          "description": "Combat state machine — battle flow, turn management",
+          "difficulty": "intermediate"
+        }
+      ]
+    },
+    {
+      "id": "godot-platformer-2d",
+      "name": "GDQuest 2D Platformer",
+      "url": "https://github.com/gdquest-demos/godot-platformer-2d",
+      "stars": 778,
+      "license": "MIT",
+      "description": "Metroidvania-inspired platformer — state machine, dash, wall slide",
+      "examples": [
+        {
+          "path": "game/src/Player/Player.gd",
+          "type": "player_platformer",
+          "description": "Advanced 2D player — state machine, hook, damage, checkpoints",
+          "difficulty": "intermediate"
+        },
+        {
+          "path": "game/src/AI/EnemyPassivePatrol.gd",
+          "type": "enemy_patrol",
+          "description": "Patrol enemy — movement, hitbox, hook interaction",
+          "difficulty": "intermediate"
+        }
+      ]
+    },
+    {
+      "id": "godot-4-3d-tps",
+      "name": "GDQuest 3D Third-Person Controller",
+      "url": "https://github.com/gdquest-demos/godot-4-3d-third-person-controller",
+      "stars": 954,
+      "license": "MIT",
+      "description": "3D TPS controller — weapons, grenades, camera, aiming, coins",
+      "examples": [
+        {
+          "path": "player/player.gd",
+          "type": "player_3d_tps",
+          "description": "Full 3D controller — movement, combat, camera, input registration",
+          "difficulty": "advanced"
+        }
+      ]
+    },
+    {
+      "id": "godot-2d-space",
+      "name": "GDQuest 2D Space Game",
+      "url": "https://github.com/gdquest-demos/godot-2d-space-game",
+      "stars": 1100,
+      "license": "MIT",
+      "description": "Space exploration — mining, inventory, resource management",
+      "examples": [
+        {
+          "path": "entities/",
+          "type": "space_movement",
+          "description": "Space ship controller — thrust, rotation, resource gathering",
+          "difficulty": "intermediate"
+        },
+        {
+          "path": "systems/",
+          "type": "inventory_system",
+          "description": "Resource management — mining, storage, crafting",
+          "difficulty": "intermediate"
+        }
+      ]
+    },
+    {
+      "id": "godot-open-rts",
+      "name": "Godot Open RTS",
+      "url": "https://github.com/lampe-games/godot-open-rts",
+      "stars": 1000,
+      "license": "MIT",
+      "description": "Real-time strategy — unit selection, pathfinding, combat",
+      "examples": [
+        {
+          "path": "source/match/units/Unit.gd",
+          "type": "rts_unit",
+          "description": "RTS unit — HP, attack, movement, selection, color customization",
+          "difficulty": "advanced"
+        }
+      ]
+    },
+    {
+      "id": "advanced-movement",
+      "name": "Advanced Movement System Godot",
+      "url": "https://github.com/ywmaa/Advanced-Movement-System-Godot",
+      "stars": 577,
+      "license": "MIT",
+      "description": "Advanced FPS/TPS movement — state machine, mantle, crouch, prone",
+      "examples": [
+        {
+          "path": "addons/AMSG/Components/CharacterMovementComponent.gd",
+          "type": "movement_component",
+          "description": "500+ line movement component — rotation, stride, slope, IK, procedural anim",
+          "difficulty": "expert"
+        }
+      ]
+    },
+    {
+      "id": "comedot",
+      "name": "Comedot",
+      "url": "https://github.com/InvadingOctopus/comedot",
+      "stars": 482,
+      "license": "MIT",
+      "description": "Component-based 2D framework — health, damage, signals",
+      "examples": [
+        {
+          "path": "Components/Combat/HealthComponent.gd",
+          "type": "health_component",
+          "description": "Reusable health component — damage, heal, signals, game over",
+          "difficulty": "beginner"
+        }
+      ]
+    },
+    {
+      "id": "tabletop-club",
+      "name": "Tabletop Club",
+      "url": "https://github.com/drwhut/tabletop-club",
+      "stars": 1500,
+      "license": "MIT",
+      "description": "Physics-based 3D tabletop sandbox — cards, dice, multiplayer",
+      "examples": [
+        {
+          "path": "game/Scripts/Pieces/Card.gd",
+          "type": "physics_piece",
+          "description": "Physics card — collision toggling, RPC, tree lifecycle",
+          "difficulty": "intermediate"
+        }
+      ]
+    },
+    {
+      "id": "oh-my-git",
+      "name": "Oh My Git!",
+      "url": "https://github.com/git-learning-game/oh-my-git",
+      "stars": 2700,
+      "license": "GPL-3.0",
+      "description": "Git learning game — card system, state management, terminal",
+      "examples": [
+        {
+          "path": "src/",
+          "type": "game_state",
+          "description": "Game state management — level progression, card interface",
+          "difficulty": "intermediate"
+        }
+      ]
+    },
+    {
+      "id": "thrive",
+      "name": "Thrive",
+      "url": "https://github.com/Revolutionary-Games/Thrive",
+      "stars": 3500,
+      "license": "AGPL-3.0",
+      "description": "Evolution simulation — microbe stage, organelle system, auto-evo",
+      "examples": [
+        {
+          "path": "src/microbe_stage/",
+          "type": "simulation_system",
+          "description": "Complex game state — entity-component, metabolism, procedural",
+          "difficulty": "expert"
+        },
+        {
+          "path": "src/general/",
+          "type": "save_system",
+          "description": "Save/load serialization — settings, state management",
+          "difficulty": "advanced"
+        }
+      ]
+    },
+    {
+      "id": "jdungeon",
+      "name": "JDungeon",
+      "url": "https://github.com/jonathaneeckhout/jdungeon",
+      "stars": 150,
+      "license": "MIT",
+      "description": "2D online RPG — client-server, lobby, network sync",
+      "examples": [
+        {
+          "path": "server/",
+          "type": "multiplayer_server",
+          "description": "Server-authoritative architecture — game state, player management",
+          "difficulty": "advanced"
+        }
+      ]
+    },
+    {
+      "id": "godot-public-examples",
+      "name": "Godot Public Examples",
+      "url": "https://github.com/nezvers/Godot_Public_Examples",
+      "stars": 240,
+      "license": "MIT",
+      "description": "Standalone GDScript example projects — movement, shooting, health",
+      "examples": [
+        {
+          "path": "Projects/",
+          "type": "mechanic_examples",
+          "description": "Isolated mechanic demos — beginner-friendly patterns",
+          "difficulty": "beginner"
+        }
+      ]
+    },
+    {
+      "id": "grapple-pack",
+      "name": "Grapple Pack (Game Off 2023 Winner)",
+      "url": "https://github.com/diego-escalante/GO2023-GrapplePack",
+      "stars": 50,
+      "license": "MIT",
+      "description": "2D platformer with grappling hook — physics-based movement",
+      "examples": [
+        {
+          "path": "player/player.gd",
+          "type": "grapple_physics",
+          "description": "Grapple physics — swing mechanics, tunable parameters",
+          "difficulty": "intermediate"
+        }
+      ]
+    },
+    {
+      "id": "dark-forest",
+      "name": "A Dark Forest (Idle Game)",
+      "url": "https://github.com/TinyTakinTeller/GodotProjectZero",
+      "stars": 182,
+      "license": "MIT",
+      "description": "Incremental idle game — progression, event-driven unlocks",
+      "examples": [
+        {
+          "path": "scripts/",
+          "type": "idle_progression",
+          "description": "Idle game loops — resource accumulation, unlock system",
+          "difficulty": "beginner"
+        }
+      ]
+    }
+  ]
+}
