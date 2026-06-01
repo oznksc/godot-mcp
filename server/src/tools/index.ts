@@ -1,0 +1,43 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { GodotBridge } from '../utils/godot-bridge.js';
+import { registerSceneTools } from './scene-tools.js';
+import { registerNodeTools } from './node-tools.js';
+import { registerScriptTools } from './script-tools.js';
+import { registerResourceTools } from './resource-tools.js';
+import { registerProjectTools } from './project-tools.js';
+import { registerEditorTools } from './editor-tools.js';
+import { registerFileTools } from './file-tools.js';
+import { registerSignalTools } from './signal-tools.js';
+import { registerRuntimeTools } from './runtime-tools.js';
+import { registerDebugTools } from './debug-tools.js';
+import { registerAnimationTools } from './animation-tools.js';
+import { registerShaderTools } from './shader-tools.js';
+import { registerPhysicsTools } from './physics-tools.js';
+import { registerUiTools } from './ui-tools.js';
+import { registerAudioTools } from './audio-tools.js';
+import { registerLightingTools } from './lighting-tools.js';
+import { registerParticlesTools } from './particles-tools.js';
+import { registerImportExportTools } from './import-export-tools.js';
+import { registerClassdbTools } from './classdb-tools.js';
+
+export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
+  registerSceneTools(server, bridge);
+  registerNodeTools(server, bridge);
+  registerScriptTools(server, bridge);
+  registerResourceTools(server, bridge);
+  registerProjectTools(server, bridge);
+  registerEditorTools(server, bridge);
+  registerFileTools(server, bridge);
+  registerSignalTools(server, bridge);
+  registerRuntimeTools(server, bridge);
+  registerDebugTools(server, bridge);
+  registerAnimationTools(server, bridge);
+  registerShaderTools(server, bridge);
+  registerPhysicsTools(server, bridge);
+  registerUiTools(server, bridge);
+  registerAudioTools(server, bridge);
+  registerLightingTools(server, bridge);
+  registerParticlesTools(server, bridge);
+  registerImportExportTools(server, bridge);
+  registerClassdbTools(server, bridge);
+}

@@ -1,0 +1,15 @@
+{
+  "name": "godot-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for Godot Game Engine — Full integration with 130+ tools",
+  "type": "module",
+  "scripts": {
+    "build": "cd server && npm run build",
+    "dev": "cd server && npm run dev",
+    "start": "cd server && npm start",
+    "setup": "cd server && npm install && npm run build",
+    "clean": "cd server && rm -rf dist node_modules"
+  },
+  "keywords": ["godot", "mcp", "game-engine", "ai", "gdscript"],
+  "license": "MIT"
+}
