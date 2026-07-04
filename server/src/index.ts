@@ -19,10 +19,21 @@ async function main(): Promise<void> {
 
   const wsPort = parseInt(process.env.GODOT_WS_PORT || '6505', 10);
   const wsHost = process.env.GODOT_WS_HOST || '127.0.0.1';
+  const reconnectAttempts = parseInt(process.env.GODOT_RECONNECT_ATTEMPTS || '5', 10);
+  const reconnectDelay = parseInt(process.env.GODOT_RECONNECT_DELAY_MS || '2000', 10);
+  const pingInterval = parseInt(process.env.GODOT_PING_INTERVAL_MS || '30000', 10);
+  const commandTimeout = parseInt(process.env.GODOT_COMMAND_TIMEOUT_MS || '30000', 10);
 
   logger.info(SCOPE, 'Starting Godot MCP Server');
 
-  const bridge = new GodotBridge({ host: wsHost, port: wsPort });
+  const bridge = new GodotBridge({
+    host: wsHost,
+    port: wsPort,
+    reconnectAttempts,
+    reconnectDelay,
+    pingInterval,
+    commandTimeout,
+  });
 
   const server = new McpServer({
     name: 'godot-mcp',

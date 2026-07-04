@@ -9,6 +9,7 @@ const DEFAULT_CONFIG: WebSocketConfig = {
   reconnectAttempts: 5,
   reconnectDelay: 2000,
   pingInterval: 30000,
+  commandTimeout: 30000,
 };
 
 export class GodotBridge extends EventEmitter {
@@ -30,6 +31,20 @@ export class GodotBridge extends EventEmitter {
 
   get connected(): boolean {
     return this._connected;
+  }
+
+  getStatus(): Record<string, unknown> {
+    return {
+      connected: this._connected,
+      host: this.config.host,
+      port: this.config.port,
+      reconnect_attempts: this.config.reconnectAttempts,
+      reconnect_count: this.reconnectCount,
+      reconnect_delay_ms: this.config.reconnectDelay,
+      ping_interval_ms: this.config.pingInterval,
+      command_timeout_ms: this.config.commandTimeout,
+      pending_requests: this.pendingRequests.size,
+    };
   }
 
   async connect(): Promise<void> {
@@ -103,7 +118,7 @@ export class GodotBridge extends EventEmitter {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(id);
         reject(new Error(`Command timed out: ${method}`));
-      }, 30000);
+      }, this.config.commandTimeout);
 
       this.pendingRequests.set(id, { resolve, reject, timer });
 

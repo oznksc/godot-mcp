@@ -1,126 +1,152 @@
-# Godot MCP Server
+# Godot MCP
 
-A comprehensive Model Context Protocol (MCP) server for Godot 4.4+ game engine integration. Provides AI assistants with full access to Godot's editor capabilities, game patterns, and real open-source game code examples.
+Godot MCP is a Model Context Protocol server for controlling and inspecting a Godot 4.4+ editor project from MCP-compatible AI clients.
+
+The integration has two parts:
+
+- A Node.js MCP server that talks to AI clients over stdio.
+- A Godot editor plugin that listens on a local WebSocket port and executes editor commands.
+
+```text
+MCP client
+  <-> stdio
+Node.js MCP server
+  <-> ws://127.0.0.1:6505
+Godot editor plugin
+  <-> Godot Editor API
+```
 
 ## Features
 
-- **122 MCP Tools** — Scene, Node, Script, Resource, Project, Editor, File, Signal, Runtime, Debug, Animation, Shader, Physics, UI, Audio, Lighting, Particles, Import/Export, ClassDB, Skills, Examples
-- **12 Skill Modules** — Auto-injected game dev knowledge (GDScript, Signals, Physics, Networking, etc.)
-- **15 Open-Source Repositories** — Real game code from GDQuest, Comedot, Thrive, Tabletop Club, and more
-- **Real-time WebSocket Bridge** — Bidirectional MCP ↔ Godot Editor communication on port 6505
-- **7 MCP Resources** — Live project info, editor state, console output, runtime status
-- **6 MCP Prompts** — Pre-built workflows for scene setup, debugging, export, and more
+- Scene, node, script, resource, project, editor, file, signal, runtime, debug, animation, shader, physics, UI, audio, lighting, particles, import/export, and ClassDB tools.
+- Godot development skill modules for GDScript, scene architecture, signals, physics, networking, export, and more.
+- Searchable references to open-source Godot project examples.
+- MCP resources for project info, settings, current scene, editor state, console output, runtime status, and ClassDB queries.
+- A `godot_connection_status` health tool for checking bridge state before running editor commands.
 
-## Architecture
+## Requirements
 
-```
-AI Client (Claude, etc.)
-    ↕ MCP stdio
-Godot MCP Server (Node.js/TypeScript)
-    ↕ WebSocket (port 6505)
-Godot Editor Plugin (GDScript)
-    ↕ Godot Editor API
-```
+- Node.js 18 or newer.
+- npm.
+- Godot 4.4 or newer.
+- An MCP client that supports stdio servers.
 
-## Installation
-
-### Prerequisites
-
-- Node.js 18+
-- Godot 4.4+
-
-### Server Setup
+## Install
 
 ```bash
-cd godot-mcp/server
-npm install
-npm run build
+git clone <repository-url>
+cd godot-mcp
+npm run setup
 ```
 
-### Godot Plugin Setup
+Then install the Godot plugin into the project you want to control:
 
-1. Copy `addons/godot_mcp/` into your Godot project's root directory
-2. Open Godot Editor → Project Settings → Plugins
-3. Enable the "Godot MCP" plugin
-4. The MCP WebSocket server starts on port 6505 automatically
+```bash
+cp -R addons/godot_mcp /path/to/your-godot-project/addons/
+```
 
-### MCP Client Configuration
+Open the project in Godot and enable `Godot MCP` from:
 
-Add to your MCP client config (e.g., Claude Desktop):
+```text
+Project -> Project Settings -> Plugins
+```
+
+The plugin listens on `127.0.0.1:6505` by default.
+
+## MCP Client Configuration
+
+Point your MCP client at the built server:
 
 ```json
 {
   "mcpServers": {
     "godot": {
       "command": "node",
-      "args": ["/path/to/godot-mcp/server/dist/index.js"]
+      "args": ["/absolute/path/to/godot-mcp/server/dist/index.js"]
     }
   }
 }
 ```
 
-## Skills
+Restart your MCP client after changing its configuration.
 
-Auto-injected based on your query context. Available skills:
+## Verify The Connection
 
-| Skill | Description |
-|-------|-------------|
-| GDScript | Language patterns, best practices, type safety |
-| Scene Architecture | Node trees, composition, scene inheritance |
-| Signal Patterns | Signals, groups, event bus, decoupling |
-| Performance | Optimization, profiling, memory management |
-| 2D Patterns | TileMap, Camera2D, 2D physics, particles |
-| 3D Patterns | 3D physics, terrain, lighting, CSG |
-| UI Design | Control nodes, themes, responsive layout |
-| Physics | RigidBody, CharacterBody, Area, joints |
-| Animation | AnimationPlayer, AnimationTree, tweens |
-| Audio | AudioStreamPlayer, buses, 3D audio |
-| Networking | ENet, RPC, authoritative server |
-| Export | Build templates, platform config, CI/CD |
+1. Open the Godot project and make sure the plugin is enabled.
+2. Start or restart your MCP client.
+3. Run the `godot_connection_status` MCP tool. It should report `"connected": true`.
+4. Run `project_get_info`. It should return metadata for the open Godot project.
 
-## Open-Source Examples
+If `godot_connection_status` reports `false`, check that:
 
-Real code from production Godot games, indexed and searchable:
+- Godot is open with the plugin enabled.
+- No other process is using port `6505`.
+- The MCP server is using the same host and port as the plugin.
+- Your MCP client points to `server/dist/index.js` after `npm run setup`.
 
-| Repository | Stars | Focus |
-|------------|-------|-------|
-| GDQuest Open RPG | ★★★ | RPG combat, inventory, dialogue |
-| GDQuest 2D Platformer | ★★★ | Player physics, enemies, level flow |
-| GDQuest 3D TPS | ★★★ | Third-person camera, aiming, movement |
-| Godot Demo Projects | ★★★ | Official examples for every subsystem |
-| Comedot | ★★ | Top-down RPG, health, combat, state machine |
-| Thrive | ★★★ | Microbe stage, evolution, complex simulation |
-| Tabletop Club | ★★ | Physics-based tabletop, cards, dice |
-| Grapple Pack | ★★ | Grappling hook physics, swinging |
-| Advanced Movement | ★★ | Character controller components |
-| Godot Open RTS | ★★ | RTS units, pathfinding, strategy |
-| and 5 more... | | |
+## Configuration
 
-## Tool Categories
+The Node bridge can be configured with environment variables:
 
-| Category | Tools | Description |
-|----------|-------|-------------|
-| Scene | 8 | Create/save/load/close scenes, get scene tree |
-| Node | 8 | Add/remove/rename/reparent nodes, set properties |
-| Script | 6 | Create/edit scripts, attach to nodes |
-| Resource | 5 | Create/load/save/manage resources |
-| Project | 7 | Project settings, scan, render size |
-| Editor | 6 | Undo/redo, play/stop, open files, fullscreen |
-| File | 5 | Read/write/copy/move/delete project files |
-| Signal | 4 | Connect/disconnect signals, list connections |
-| Runtime | 6 | Execute code, get/set properties, call methods |
-| Debug | 5 | Start/stop debugging, breakpoints, step |
-| Animation | 6 | Create/manage animations, AnimationPlayer |
-| Shader | 5 | Create/edit shaders, set uniforms |
-| Physics | 5 | Raycast, shape query, direct body state |
-| UI | 6 | Create Control nodes, themes, layouts |
-| Audio | 5 | AudioStreamPlayer, buses, play/stop |
-| Lighting | 5 | OmniLight, DirectionalLight, Environment |
-| Particles | 5 | GPUParticles, CPUParticles, emission |
-| Import/Export | 5 | Import resources, export builds |
-| ClassDB | 5 | Class info, inheritance, constants |
-| Skills | 3 | Query/navigate game dev knowledge |
-| Examples | 4 | Find real open-source game code |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GODOT_WS_HOST` | `127.0.0.1` | Host where the Godot plugin listens. |
+| `GODOT_WS_PORT` | `6505` | WebSocket port used by the Godot plugin. |
+| `GODOT_RECONNECT_ATTEMPTS` | `5` | Reconnect attempts after a dropped bridge connection. |
+| `GODOT_RECONNECT_DELAY_MS` | `2000` | Delay between reconnect attempts. |
+| `GODOT_PING_INTERVAL_MS` | `30000` | WebSocket ping interval. |
+| `GODOT_COMMAND_TIMEOUT_MS` | `30000` | Timeout for a single Godot command. |
+| `LOG_LEVEL` | `info` | One of `debug`, `info`, `warn`, or `error`. |
+
+Example:
+
+```json
+{
+  "mcpServers": {
+    "godot": {
+      "command": "node",
+      "args": ["/absolute/path/to/godot-mcp/server/dist/index.js"],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "GODOT_COMMAND_TIMEOUT_MS": "60000"
+      }
+    }
+  }
+}
+```
+
+## Development
+
+```bash
+npm run setup
+npm run verify
+npm run start
+```
+
+Useful commands:
+
+| Command | Description |
+| --- | --- |
+| `npm run setup` | Install server dependencies and build TypeScript. |
+| `npm run build` | Build the MCP server. |
+| `npm run verify` | Run the current verification suite. |
+| `npm run start` | Start the built MCP server over stdio. |
+| `npm run clean` | Remove generated server build output and dependencies. |
+
+Do not commit `server/node_modules` or `server/dist`; they are generated locally.
+
+## Repository Layout
+
+```text
+addons/godot_mcp/   Godot editor plugin
+server/src/         TypeScript MCP server
+skills/             Godot development reference modules
+examples/           Open-source example registry
+```
+
+## Safety Notes
+
+The plugin can read and write files in the connected Godot project and can invoke editor APIs. Only enable it in projects and MCP clients you trust.
 
 ## License
 

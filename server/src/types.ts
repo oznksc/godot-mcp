@@ -61,4 +61,5 @@ export interface WebSocketConfig {
   reconnectAttempts: number;
   reconnectDelay: number;
   pingInterval: number;
+  commandTimeout: number;
 }

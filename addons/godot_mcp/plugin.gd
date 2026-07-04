@@ -65,4 +65,5 @@ func _on_disconnected() -> void:
 func _on_message(message: String) -> void:
 	_log_panel.add_log("Received: " + message.left(200))
 	var response: Dictionary = _command_router.execute(message)
+	_websocket_client.send_response(response)
 	_log_panel.add_log("Sent: " + JSON.stringify(response).left(200))

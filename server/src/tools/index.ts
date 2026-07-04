@@ -23,6 +23,15 @@ import { registerSkillTools } from '../skills/skill-tools.js';
 import { registerExampleTools } from '../skills/example-tools.js';
 
 export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
+  server.tool(
+    'godot_connection_status',
+    'Get MCP-to-Godot bridge connection health and runtime configuration',
+    {},
+    async () => ({
+      content: [{ type: 'text' as const, text: JSON.stringify(bridge.getStatus(), null, 2) }],
+    })
+  );
+
   registerSceneTools(server, bridge);
   registerNodeTools(server, bridge);
   registerScriptTools(server, bridge);
