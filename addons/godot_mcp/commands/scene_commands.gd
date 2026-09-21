@@ -6,6 +6,12 @@ const NodeUtils = preload("res://addons/godot_mcp/core/node_utils.gd")
 const UndoRedoHelper = preload("res://addons/godot_mcp/core/undo_redo_helper.gd")
 const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
 
+var _transaction_manager: Node
+
+
+func setup(tx_mgr: Node = null) -> void:
+	_transaction_manager = tx_mgr
+
 
 func scene_create(params: Dictionary) -> Variant:
 	var name: String = params.get("name", "NewScene")
@@ -61,6 +67,17 @@ func scene_save(params: Dictionary) -> Variant:
 	if not check.get("valid", false):
 		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
 	path = check["path"]
+
+	# Transaction backup and dry-run check
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+			_transaction_manager.record_file_modify(path)
+			return {"success": true, "dry_run": true, "simulated_action": "scene_save", "path": path}
+		elif _transaction_manager.has_method("record_file_modify"):
+			if FileAccess.file_exists(path):
+				_transaction_manager.record_file_modify(path)
+			else:
+				_transaction_manager.record_file_create(path)
 
 	var packed: PackedScene = PackedScene.new()
 	packed.pack(root)

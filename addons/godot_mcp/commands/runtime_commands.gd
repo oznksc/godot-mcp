@@ -40,12 +40,20 @@ func runtime_step(_params: Dictionary) -> Variant:
 
 
 func runtime_is_playing(_params: Dictionary) -> Variant:
-	return {"is_playing": EditorInterface.is_playing_scene()}
+	var is_playing: bool = false
+	if Engine.is_editor_hint() and EditorInterface != null:
+		is_playing = EditorInterface.is_playing_scene()
+	return {"is_playing": is_playing}
 
 
 func runtime_get_status(_params: Dictionary) -> Variant:
+	var is_playing: bool = false
+	var playing_scene: String = ""
+	if Engine.is_editor_hint() and EditorInterface != null:
+		is_playing = EditorInterface.is_playing_scene()
+		playing_scene = EditorInterface.get_playing_scene()
 	return {
-		"is_playing": EditorInterface.is_playing_scene(),
-		"playing_scene": EditorInterface.get_playing_scene(),
-		"is_paused": get_tree().paused if Engine.has_singleton("SceneTree") else false,
+		"is_playing": is_playing,
+		"playing_scene": playing_scene,
+		"is_paused": get_tree().paused if get_tree() != null else false,
 	}

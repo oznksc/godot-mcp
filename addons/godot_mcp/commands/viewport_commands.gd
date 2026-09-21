@@ -10,17 +10,22 @@ func viewport_capture_editor(params: Dictionary) -> Variant:
 	var max_width: int = params.get("max_width", 1280)
 	var max_height: int = params.get("max_height", 720)
 
-	var target_viewport: SubViewport = null
-	if view == "2d":
-		target_viewport = EditorInterface.get_editor_viewport_2d()
-	elif view == "3d":
-		target_viewport = EditorInterface.get_editor_viewport_3d(0)
+	var target_viewport: Viewport = null
+	if Engine.is_editor_hint() and EditorInterface != null:
+		if view == "2d" and EditorInterface.has_method("get_editor_viewport_2d"):
+			target_viewport = EditorInterface.get_editor_viewport_2d()
+		elif view == "3d" and EditorInterface.has_method("get_editor_viewport_3d"):
+			target_viewport = EditorInterface.get_editor_viewport_3d(0)
+
+		if target_viewport == null and EditorInterface.has_method("get_base_control"):
+			var base_ctrl: Control = EditorInterface.get_base_control()
+			if base_ctrl:
+				target_viewport = base_ctrl.get_viewport()
 
 	if target_viewport == null:
-		# Fallback to the main editor viewport
-		var base_ctrl: Control = EditorInterface.get_base_control()
-		if base_ctrl:
-			target_viewport = base_ctrl.get_viewport()
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree != null:
+			target_viewport = tree.root
 
 	if target_viewport == null:
 		return {"error": {"code": -32603, "message": "Could not access editor viewport"}}
@@ -38,14 +43,18 @@ func viewport_capture_game(params: Dictionary) -> Variant:
 	var max_width: int = params.get("max_width", 1280)
 	var max_height: int = params.get("max_height", 720)
 
-	var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("capture_viewport", {
+	var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("capture_viewport", {
 		"max_width": max_width,
 		"max_height": max_height
 	})
 	if not rt_res.has("error") and rt_res.has("base64"):
 		return rt_res
 
-	var root_vp: Viewport = get_tree().root
+	var root_vp: Viewport = null
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null:
+		root_vp = tree.root
+
 	if root_vp == null:
 		return {"error": {"code": -32603, "message": "Could not access running game root viewport"}}
 
@@ -54,11 +63,19 @@ func viewport_capture_game(params: Dictionary) -> Variant:
 
 func viewport_set_debug_draw(params: Dictionary) -> Variant:
 	var mode: String = params.get("mode", "normal").to_lower()
-	var vp: Viewport = EditorInterface.get_editor_viewport_3d(0)
+	var vp: Viewport = null
+	if Engine.is_editor_hint() and EditorInterface != null:
+		if EditorInterface.has_method("get_editor_viewport_3d"):
+			vp = EditorInterface.get_editor_viewport_3d(0)
+		if vp == null and EditorInterface.has_method("get_base_control"):
+			var base_ctrl: Control = EditorInterface.get_base_control()
+			if base_ctrl:
+				vp = base_ctrl.get_viewport()
+
 	if vp == null:
-		var base_ctrl: Control = EditorInterface.get_base_control()
-		if base_ctrl:
-			vp = base_ctrl.get_viewport()
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree != null:
+			vp = tree.root
 
 	if vp == null:
 		return {"error": {"code": -32603, "message": "Viewport not accessible"}}
@@ -90,12 +107,17 @@ func viewport_set_debug_draw(params: Dictionary) -> Variant:
 
 func _capture_viewport_to_dict(vp: Viewport, max_w: int, max_h: int, view_name: String) -> Dictionary:
 	var tex: ViewportTexture = vp.get_texture()
-	if tex == null:
-		return {"error": {"code": -32603, "message": "Failed to get viewport texture"}}
+	var img: Image = null
+	if tex != null:
+		img = tex.get_image()
 
-	var img: Image = tex.get_image()
 	if img == null or img.is_empty():
-		return {"error": {"code": -32603, "message": "Captured viewport image was empty"}}
+		RenderingServer.force_draw(false)
+		if tex != null:
+			img = tex.get_image()
+
+	if img == null or img.is_empty():
+		return {"error": {"code": -32603, "message": "Failed to capture viewport texture image"}}
 
 	var orig_w: int = img.get_width()
 	var orig_h: int = img.get_height()

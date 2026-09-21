@@ -8,6 +8,8 @@ import { registerAllTools } from './tools/index.js';
 import { registerResources } from './resources/index.js';
 import { registerPrompts } from './prompts/index.js';
 
+import { GodotLSPClient } from './utils/godot-lsp.js';
+
 const SCOPE = 'main';
 
 async function main(): Promise<void> {
@@ -19,6 +21,7 @@ async function main(): Promise<void> {
 
   const wsPort = parseInt(process.env.GODOT_WS_PORT || '6505', 10);
   const wsHost = process.env.GODOT_WS_HOST || '127.0.0.1';
+  const lspPort = parseInt(process.env.GODOT_LSP_PORT || '6005', 10);
   const reconnectAttempts = parseInt(process.env.GODOT_RECONNECT_ATTEMPTS || '5', 10);
   const reconnectDelay = parseInt(process.env.GODOT_RECONNECT_DELAY_MS || '2000', 10);
   const pingInterval = parseInt(process.env.GODOT_PING_INTERVAL_MS || '30000', 10);
@@ -35,17 +38,25 @@ async function main(): Promise<void> {
     commandTimeout,
   });
 
+  const lspClient = new GodotLSPClient(wsHost, lspPort);
+  lspClient.connect().catch(() => {
+    logger.debug(SCOPE, 'Godot LSP not immediately available, fallback parser will be used');
+  });
+
   const server = new McpServer({
     name: 'godot-mcp',
     version: '2.0.0',
   });
 
-  registerAllTools(server, bridge);
+  registerAllTools(server, bridge, lspClient);
   registerResources(server, bridge);
   registerPrompts(server);
 
   bridge.on('connected', () => {
     logger.info(SCOPE, 'Bridge connected to Godot editor');
+    if (!lspClient.isConnected) {
+      lspClient.connect().catch(() => {});
+    }
   });
 
   bridge.on('disconnected', () => {

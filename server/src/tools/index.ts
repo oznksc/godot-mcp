@@ -26,8 +26,13 @@ import { registerPlaytestTools } from './playtest-tools.js';
 import { registerLspTools } from './lsp-tools.js';
 import { registerSkillTools } from '../skills/skill-tools.js';
 import { registerExampleTools } from '../skills/example-tools.js';
+import { GodotLSPClient } from '../utils/godot-lsp.js';
 
-export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
+export function registerAllTools(
+  server: McpServer,
+  bridge: GodotBridge,
+  lspClient?: GodotLSPClient
+): void {
   server.tool(
     'godot_connection_status',
     'Get MCP-to-Godot bridge connection health, version handshake, and capabilities',
@@ -62,7 +67,7 @@ export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
   registerViewportTools(server, bridge);
   registerInputTools(server, bridge);
   registerPlaytestTools(server, bridge);
-  registerLspTools(server, bridge);
+  registerLspTools(server, bridge, lspClient);
 
   registerSkillTools(server);
   registerExampleTools(server);

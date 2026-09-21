@@ -8,16 +8,16 @@ const MCPRuntimeBridge = preload("res://addons/godot_mcp/core/mcp_runtime_bridge
 
 
 func runtime_get_remote_scene_tree(_params: Dictionary = {}) -> Variant:
-	if EditorInterface.is_playing_scene():
-		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("get_scene_tree")
+	if Engine.is_editor_hint() and EditorInterface != null and EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("get_scene_tree")
 		if not rt_res.has("error"):
 			return rt_res
 
-	var root: Node = get_tree().root
+	var root: Node = get_tree().root if get_tree() != null else null
 	if root == null:
 		return {"error": {"code": -32602, "message": "Root node not available"}}
 
-	var is_playing: bool = EditorInterface.is_playing_scene()
+	var is_playing: bool = EditorInterface.is_playing_scene() if (Engine.is_editor_hint() and EditorInterface != null) else false
 	return {
 		"is_playing": is_playing,
 		"tree": _serialize_runtime_node(root, 0, 8)
@@ -29,8 +29,8 @@ func runtime_get_node_properties(params: Dictionary) -> Variant:
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Node path is required"}}
 
-	if EditorInterface.is_playing_scene():
-		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("get_node_properties", {"path": path})
+	if Engine.is_editor_hint() and EditorInterface != null and EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("get_node_properties", {"path": path})
 		if not rt_res.has("error"):
 			return rt_res
 
@@ -64,8 +64,8 @@ func runtime_set_node_property(params: Dictionary) -> Variant:
 	if path.is_empty() or property.is_empty():
 		return {"error": {"code": -32602, "message": "Path and property name are required"}}
 
-	if EditorInterface.is_playing_scene():
-		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("set_node_property", {
+	if Engine.is_editor_hint() and EditorInterface != null and EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("set_node_property", {
 			"path": path,
 			"property": property,
 			"value": value
@@ -91,8 +91,8 @@ func runtime_set_node_property(params: Dictionary) -> Variant:
 
 
 func runtime_get_performance_metrics(_params: Dictionary = {}) -> Variant:
-	if EditorInterface.is_playing_scene():
-		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("get_performance")
+	if Engine.is_editor_hint() and EditorInterface != null and EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("get_performance")
 		if not rt_res.has("error"):
 			return rt_res
 

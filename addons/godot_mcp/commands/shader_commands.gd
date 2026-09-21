@@ -4,6 +4,12 @@ extends Node
 const NodeUtils = preload("res://addons/godot_mcp/core/node_utils.gd")
 const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
 
+var _transaction_manager: Node
+
+
+func setup(tx_mgr: Node = null) -> void:
+	_transaction_manager = tx_mgr
+
 
 func shader_create(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
@@ -13,6 +19,17 @@ func shader_create(params: Dictionary) -> Variant:
 		return {"error": {"code": -32602, "message": "Path is required"}}
 	if not PathSandbox.is_path_safe(path):
 		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
+
+	# Transaction backup and dry-run check
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+			_transaction_manager.record_file_modify(path)
+			return {"success": true, "dry_run": true, "simulated_action": "shader_create", "path": path, "type": type}
+		elif _transaction_manager.has_method("record_file_modify"):
+			if FileAccess.file_exists(path):
+				_transaction_manager.record_file_modify(path)
+			else:
+				_transaction_manager.record_file_create(path)
 
 	if content.is_empty():
 		match type:
@@ -61,6 +78,17 @@ func shader_write(params: Dictionary) -> Variant:
 		return {"error": {"code": -32602, "message": "Path is required"}}
 	if not PathSandbox.is_path_safe(path):
 		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
+
+	# Transaction backup and dry-run check
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+			_transaction_manager.record_file_modify(path)
+			return {"success": true, "dry_run": true, "simulated_action": "shader_write", "path": path}
+		elif _transaction_manager.has_method("record_file_modify"):
+			if FileAccess.file_exists(path):
+				_transaction_manager.record_file_modify(path)
+			else:
+				_transaction_manager.record_file_create(path)
 
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:

@@ -41,11 +41,17 @@ func _enter_tree() -> void:
 
 	_websocket_client.start(WS_PORT)
 	add_autoload_singleton("MCPRuntime", "res://addons/godot_mcp/runtime/mcp_runtime.gd")
+	if not ProjectSettings.has_setting("autoload/MCPRuntime"):
+		ProjectSettings.set_setting("autoload/MCPRuntime", "*res://addons/godot_mcp/runtime/mcp_runtime.gd")
+		ProjectSettings.save()
 	print("[Godot MCP v2] Plugin loaded, listening on port ", WS_PORT)
 
 
 func _exit_tree() -> void:
 	remove_autoload_singleton("MCPRuntime")
+	if ProjectSettings.has_setting("autoload/MCPRuntime"):
+		ProjectSettings.set_setting("autoload/MCPRuntime", null)
+		ProjectSettings.save()
 	if _websocket_client:
 		_websocket_client.stop()
 		_websocket_client.queue_free()

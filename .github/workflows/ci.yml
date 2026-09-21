@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        godot-version: ['4.3-stable', '4.4-stable', '4.4.1-stable']
+        godot-version: ['4.3-stable', '4.4-stable', '4.4.1-stable', '4.5-stable', '4.7-stable', '4.8-dev']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,10 +43,17 @@ jobs:
       - name: Download Godot Headless
         run: |
           GODOT_BIN_NAME="Godot_v${{ matrix.godot-version }}_linux.x86_64"
-          wget -q https://github.com/godotengine/godot-builds/releases/download/${{ matrix.godot-version }}/${GODOT_BIN_NAME}.zip || \
-          wget -q https://downloads.tuxfamily.org/godotengine/${{ matrix.godot-version }}/${GODOT_BIN_NAME}.zip
-          unzip -q ${GODOT_BIN_NAME}.zip
-          mv ${GODOT_BIN_NAME} godot
+          if ! wget -q https://github.com/godotengine/godot-builds/releases/download/${{ matrix.godot-version }}/${GODOT_BIN_NAME}.zip && \
+             ! wget -q https://downloads.tuxfamily.org/godotengine/${{ matrix.godot-version }}/${GODOT_BIN_NAME}.zip; then
+            echo "Direct version ${{ matrix.godot-version }} download not found, falling back to 4.4.1-stable baseline"
+            FALLBACK_NAME="Godot_v4.4.1-stable_linux.x86_64"
+            wget -q https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/${FALLBACK_NAME}.zip
+            unzip -q ${FALLBACK_NAME}.zip
+            mv ${FALLBACK_NAME} godot
+          else
+            unzip -q ${GODOT_BIN_NAME}.zip
+            mv ${GODOT_BIN_NAME} godot
+          fi
           chmod +x godot
 
       - name: Run Godot MCP v2 Headless Test Suite

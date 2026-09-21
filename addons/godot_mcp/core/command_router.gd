@@ -48,12 +48,14 @@ func _load_command_modules() -> void:
 	add_child(_transaction_manager)
 
 	_scene_commands = preload("res://addons/godot_mcp/commands/scene_commands.gd").new()
+	_scene_commands.setup(_transaction_manager)
 	_node_commands = preload("res://addons/godot_mcp/commands/node_commands.gd").new()
 	_node_commands.setup(_transaction_manager)
 	_script_commands = preload("res://addons/godot_mcp/commands/script_commands.gd").new()
 	_script_commands.setup(_transaction_manager)
 
 	_resource_commands = preload("res://addons/godot_mcp/commands/resource_commands.gd").new()
+	_resource_commands.setup(_transaction_manager)
 	_project_commands = preload("res://addons/godot_mcp/commands/project_commands.gd").new()
 	_editor_commands = preload("res://addons/godot_mcp/commands/editor_commands.gd").new()
 	_file_commands = preload("res://addons/godot_mcp/commands/file_commands.gd").new()
@@ -64,6 +66,7 @@ func _load_command_modules() -> void:
 	_debug_commands = preload("res://addons/godot_mcp/commands/debug_commands.gd").new()
 	_animation_commands = preload("res://addons/godot_mcp/commands/animation_commands.gd").new()
 	_shader_commands = preload("res://addons/godot_mcp/commands/shader_commands.gd").new()
+	_shader_commands.setup(_transaction_manager)
 	_physics_commands = preload("res://addons/godot_mcp/commands/physics_commands.gd").new()
 	_ui_commands = preload("res://addons/godot_mcp/commands/ui_commands.gd").new()
 	_audio_commands = preload("res://addons/godot_mcp/commands/audio_commands.gd").new()

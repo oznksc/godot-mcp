@@ -95,7 +95,7 @@ func playtest_run_flow(params: Dictionary) -> Variant:
 				var actual_val = null
 
 				if EditorInterface.is_playing_scene():
-					var rt_props: Dictionary = MCPRuntimeBridge.query_runtime("get_node_properties", {"path": node_path})
+					var rt_props: Dictionary = await MCPRuntimeBridge.query_runtime("get_node_properties", {"path": node_path})
 					if rt_props.has("properties") and rt_props["properties"].has(property):
 						actual_val = rt_props["properties"][property]
 

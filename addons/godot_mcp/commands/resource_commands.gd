@@ -3,6 +3,12 @@ extends Node
 
 const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
 
+var _transaction_manager: Node
+
+
+func setup(tx_mgr: Node = null) -> void:
+	_transaction_manager = tx_mgr
+
 
 func resource_get_info(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
@@ -52,6 +58,17 @@ func resource_save(params: Dictionary) -> Variant:
 	if res == null:
 		return {"error": {"code": -32603, "message": "Failed to load resource: " + path}}
 
+	# Transaction backup and dry-run check
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+			_transaction_manager.record_file_modify(path)
+			return {"success": true, "dry_run": true, "simulated_action": "resource_save", "path": path}
+		elif _transaction_manager.has_method("record_file_modify"):
+			if FileAccess.file_exists(path):
+				_transaction_manager.record_file_modify(path)
+			else:
+				_transaction_manager.record_file_create(path)
+
 	var err: Error = ResourceSaver.save(res, path)
 	if err != OK:
 		return {"error": {"code": -32603, "message": "Failed to save resource: " + error_string(err)}}
@@ -98,6 +115,17 @@ func resource_create(params: Dictionary) -> Variant:
 		res.set(key, properties[key])
 
 	if not path.is_empty():
+		# Transaction backup and dry-run check
+		if _transaction_manager:
+			if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+				_transaction_manager.record_file_modify(path)
+				return {"success": true, "dry_run": true, "simulated_action": "resource_create", "type": type, "path": path}
+			elif _transaction_manager.has_method("record_file_modify"):
+				if FileAccess.file_exists(path):
+					_transaction_manager.record_file_modify(path)
+				else:
+					_transaction_manager.record_file_create(path)
+
 		var err: Error = ResourceSaver.save(res, path)
 		if err != OK:
 			return {"error": {"code": -32603, "message": "Failed to save resource: " + error_string(err)}}

@@ -33,6 +33,7 @@ func _run_all_tests() -> void:
 	_test_transaction_manager()
 	_test_command_router_dispatch()
 	_test_project_and_input_commands()
+	_test_runtime_companion_auth_and_transactions()
 
 
 func _assert_true(condition: bool, test_name: String, error_msg: String = "") -> void:
@@ -231,6 +232,64 @@ func _test_project_and_input_commands() -> void:
 	var bad_shader = shader_cmd.shader_create({"path": "/tmp/malicious.gdshader"})
 	_assert_true(bad_shader.has("error"), "Shader command blocked outside path")
 	shader_cmd.queue_free()
+
+
+func _test_runtime_companion_auth_and_transactions() -> void:
+	print("\n[Phase 8] Testing Runtime Companion Auth, Viewport Typing & Expanded Transactions...")
+	var SessionClass = load("res://addons/godot_mcp/core/session_auth.gd")
+	var valid_token = SessionClass.get_session_token()
+
+	# 1. Viewport type safety test
+	var ViewportCmdClass = load("res://addons/godot_mcp/commands/viewport_commands.gd")
+	var vp_cmd = ViewportCmdClass.new()
+	root.add_child(vp_cmd)
+	var vp_res = vp_cmd.viewport_capture_editor({})
+	_assert_true(vp_res is Dictionary, "Viewport capture editor returns valid Dictionary (no type mismatch)")
+	vp_cmd.queue_free()
+
+	# 2. Expanded Transaction Manager Dry Run & Rollback on Resources and Shaders
+	var TxClass = load("res://addons/godot_mcp/core/transaction_manager.gd")
+	var tx = TxClass.new()
+	root.add_child(tx)
+
+	var ResCmdClass = load("res://addons/godot_mcp/commands/resource_commands.gd")
+	var res_cmd = ResCmdClass.new()
+	res_cmd.setup(tx)
+	root.add_child(res_cmd)
+
+	var ShaderCmdClass = load("res://addons/godot_mcp/commands/shader_commands.gd")
+	var shader_cmd = ShaderCmdClass.new()
+	shader_cmd.setup(tx)
+	root.add_child(shader_cmd)
+
+	# Start dry run transaction
+	var dry_tx = tx.begin_transaction({"name": "Multi-module Dry Run", "dry_run": true})
+	var dry_path_res: String = "res://_dry_test.tres"
+	var dry_path_shader: String = "res://_dry_test.gdshader"
+
+	var r_res = res_cmd.resource_create({"type": "Resource", "path": dry_path_res})
+	_assert_true(r_res.get("dry_run", false), "Resource creation honors dry_run")
+	_assert_true(not FileAccess.file_exists(dry_path_res), "Resource not written to disk during dry_run")
+
+	var s_res = shader_cmd.shader_create({"path": dry_path_shader})
+	_assert_true(s_res.get("dry_run", false), "Shader creation honors dry_run")
+	_assert_true(not FileAccess.file_exists(dry_path_shader), "Shader not written to disk during dry_run")
+
+	tx.commit_transaction({"transaction_id": dry_tx.get("transaction_id")})
+
+	# 3. Real Rollback of Shader Creation
+	var real_tx = tx.begin_transaction({"name": "Shader Rollback", "dry_run": false})
+	var real_shader_path: String = "res://_rollback_test.gdshader"
+	var create_res = shader_cmd.shader_create({"path": real_shader_path, "content": "shader_type spatial;"})
+	_assert_true(create_res.get("success", false), "Shader created under active transaction")
+	_assert_true(FileAccess.file_exists(real_shader_path), "Shader file exists on disk before rollback")
+
+	tx.rollback_transaction({"transaction_id": real_tx.get("transaction_id")})
+	_assert_true(not FileAccess.file_exists(real_shader_path), "Shader file deleted by atomic rollback")
+
+	res_cmd.queue_free()
+	shader_cmd.queue_free()
+	tx.queue_free()
 
 
 func _find_gd_files_recursive(path: String, results: Array) -> void:

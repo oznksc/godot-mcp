@@ -6,13 +6,24 @@ class_name MCPRuntimeBridge
 ## active game process's MCP Runtime Companion on port 6506.
 
 const RUNTIME_PORT := 6506
+const SessionAuth = preload("res://addons/godot_mcp/core/session_auth.gd")
 
 
 static func is_game_running() -> bool:
-	return EditorInterface.is_playing_scene()
+	if Engine.is_editor_hint() and EditorInterface != null:
+		return EditorInterface.is_playing_scene()
+	return false
 
 
-static func query_runtime(method: String, params: Dictionary = {}, timeout_ms: int = 2000) -> Dictionary:
+static func _yield_frame() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null:
+		await tree.process_frame
+	else:
+		OS.delay_msec(5)
+
+
+static func query_runtime(method: String, params: Dictionary = {}, timeout_ms: int = 400) -> Dictionary:
 	if not is_game_running():
 		return {"error": "Game is not currently running"}
 
@@ -21,28 +32,30 @@ static func query_runtime(method: String, params: Dictionary = {}, timeout_ms: i
 	if err != OK:
 		return {"error": "Could not connect to Runtime Companion: " + error_string(err)}
 
-	# Wait for connection
+	# Non-blocking wait for connection
 	var start_time: int = Time.get_ticks_msec()
 	while peer.get_status() == StreamPeerTCP.STATUS_CONNECTING:
 		peer.poll()
-		OS.delay_msec(10)
 		if Time.get_ticks_msec() - start_time > timeout_ms:
 			peer.disconnect_from_host()
 			return {"error": "Connection to Runtime Companion timed out"}
+		await _yield_frame()
 
 	if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+		peer.disconnect_from_host()
 		return {"error": "Runtime Companion not reachable on port " + str(RUNTIME_PORT)}
 
 	var req_id: String = "rt_" + str(randi() % 100000)
 	var req_dict: Dictionary = {
 		"id": req_id,
 		"method": method,
-		"params": params
+		"params": params,
+		"token": SessionAuth.get_session_token()
 	}
 	var msg: String = JSON.stringify(req_dict)
 	peer.put_utf8_string(msg)
 
-	# Read response
+	# Non-blocking read response
 	var response_data: String = ""
 	start_time = Time.get_ticks_msec()
 	while true:
@@ -52,10 +65,13 @@ static func query_runtime(method: String, params: Dictionary = {}, timeout_ms: i
 			response_data += peer.get_utf8_string(bytes_avail)
 			if response_data.ends_with("\n"):
 				break
-		OS.delay_msec(10)
+		var status = peer.get_status()
+		if status != StreamPeerTCP.STATUS_CONNECTED:
+			break
 		if Time.get_ticks_msec() - start_time > timeout_ms:
 			peer.disconnect_from_host()
 			return {"error": "Runtime Companion response timed out"}
+		await _yield_frame()
 
 	peer.disconnect_from_host()
 

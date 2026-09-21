@@ -1,5 +1,7 @@
 extends Node
 
+const SessionAuth = preload("res://addons/godot_mcp/core/session_auth.gd")
+
 ## MCP Runtime Companion for Godot MCP v2.
 ## Runs inside the active game process in debug mode.
 ## Enables real in-game scene tree inspection, dynamic property tweaking,
@@ -62,6 +64,21 @@ func _handle_direct_request(client: StreamPeerTCP, raw_data: String) -> void:
 	var id: String = req.get("id", "")
 	var method: String = req.get("method", "")
 	var params: Dictionary = req.get("params", {})
+	var token: String = req.get("token", "")
+	if token.is_empty():
+		token = params.get("session_token", "")
+
+	# Verify session token from .godot/mcp_session.key
+	if not SessionAuth.validate_token(token):
+		var err_resp: Dictionary = {
+			"id": id,
+			"error": {
+				"code": -32000,
+				"message": "Unauthorized: invalid or missing session token. Provide key from .godot/mcp_session.key"
+			}
+		}
+		client.put_utf8_string(JSON.stringify(err_resp) + "\n")
+		return
 
 	var result: Variant = _dispatch_runtime_command(method, params)
 	var resp: Dictionary = {"id": id, "result": result}

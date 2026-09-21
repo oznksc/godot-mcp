@@ -9,7 +9,7 @@ const MCPRuntimeBridge = preload("res://addons/godot_mcp/core/mcp_runtime_bridge
 
 func input_simulate_key(params: Dictionary) -> Variant:
 	if EditorInterface.is_playing_scene():
-		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("simulate_input_key", params)
+		var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("simulate_input_key", params)
 		if not rt_res.has("error"):
 			return rt_res
 
@@ -55,7 +55,7 @@ func input_simulate_key(params: Dictionary) -> Variant:
 
 func input_simulate_mouse(params: Dictionary) -> Variant:
 	if EditorInterface.is_playing_scene():
-		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("simulate_input_mouse", params)
+		var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("simulate_input_mouse", params)
 		if not rt_res.has("error"):
 			return rt_res
 
@@ -104,7 +104,7 @@ func input_simulate_mouse(params: Dictionary) -> Variant:
 
 func input_simulate_action(params: Dictionary) -> Variant:
 	if EditorInterface.is_playing_scene():
-		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("simulate_input_action", params)
+		var rt_res: Dictionary = await MCPRuntimeBridge.query_runtime("simulate_input_action", params)
 		if not rt_res.has("error"):
 			return rt_res
 
