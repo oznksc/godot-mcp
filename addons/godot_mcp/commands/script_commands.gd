@@ -26,11 +26,15 @@ func script_create(params: Dictionary) -> Variant:
 	if content.is_empty():
 		content = "extends " + extends_class + "\n\n\n"
 
-	if _transaction_manager and _transaction_manager.has_method("record_file_create"):
-		if FileAccess.file_exists(path):
-			_transaction_manager.record_file_modify(path)
-		else:
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
 			_transaction_manager.record_file_create(path)
+			return {"success": true, "dry_run": true, "simulated_action": "script_create", "path": path}
+		elif _transaction_manager.has_method("record_file_create"):
+			if FileAccess.file_exists(path):
+				_transaction_manager.record_file_modify(path)
+			else:
+				_transaction_manager.record_file_create(path)
 
 	var parts: PackedStringArray = path.replace("res://", "").split("/")
 	if parts.size() > 1:
@@ -74,11 +78,15 @@ func script_write(params: Dictionary) -> Variant:
 		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
 	path = check["path"]
 
-	if _transaction_manager and _transaction_manager.has_method("record_file_modify"):
-		if FileAccess.file_exists(path):
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
 			_transaction_manager.record_file_modify(path)
-		else:
-			_transaction_manager.record_file_create(path)
+			return {"success": true, "dry_run": true, "simulated_action": "script_write", "path": path}
+		elif _transaction_manager.has_method("record_file_modify"):
+			if FileAccess.file_exists(path):
+				_transaction_manager.record_file_modify(path)
+			else:
+				_transaction_manager.record_file_create(path)
 
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:

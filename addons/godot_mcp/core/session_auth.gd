@@ -45,9 +45,10 @@ static func get_session_token() -> String:
 static func validate_token(token: String) -> bool:
 	if not _auth_enabled:
 		return true
+	if token.is_empty():
+		return false
 	if _active_session_token.is_empty():
 		get_session_token()
 	if _active_session_token.is_empty():
-		# Auth disabled or key not generated
-		return true
+		return false
 	return token == _active_session_token

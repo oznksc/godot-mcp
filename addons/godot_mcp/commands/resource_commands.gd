@@ -1,11 +1,15 @@
 @tool
 extends Node
 
+const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
+
 
 func resource_get_info(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+	if not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	var res: Resource = ResourceLoader.load(path)
 	if res == null:
@@ -26,6 +30,8 @@ func resource_set_property(params: Dictionary) -> Variant:
 	var value: Variant = params.get("value")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+	if not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	var res: Resource = ResourceLoader.load(path)
 	if res == null:
@@ -39,6 +45,8 @@ func resource_save(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+	if not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	var res: Resource = ResourceLoader.load(path)
 	if res == null:
@@ -54,6 +62,8 @@ func resource_load(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+	if not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	var res: Resource = ResourceLoader.load(path)
 	if res == null:
@@ -72,6 +82,9 @@ func resource_create(params: Dictionary) -> Variant:
 	var properties: Dictionary = params.get("properties", {})
 	if type.is_empty():
 		return {"error": {"code": -32602, "message": "Type is required"}}
+
+	if not path.is_empty() and not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	if not ClassDB.class_exists(type):
 		return {"error": {"code": -32602, "message": "Unknown resource type: " + type}}
@@ -98,8 +111,10 @@ func resource_list_by_type(params: Dictionary) -> Variant:
 		return {"error": {"code": -32602, "message": "Type is required"}}
 
 	var resources: Array = []
-	var efs: EditorFileSystem = EditorInterface.get_resource_filesystem()
-	_find_resources_by_type(efs.get_filesystem(), type, resources)
+	if Engine.is_editor_hint() and EditorInterface != null:
+		var efs: EditorFileSystem = EditorInterface.get_resource_filesystem()
+		if efs != null and efs.get_filesystem() != null:
+			_find_resources_by_type(efs.get_filesystem(), type, resources)
 	return {"resources": resources, "type": type}
 
 

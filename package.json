@@ -12,6 +12,7 @@
     "test:server": "cd server && npm test",
     "test:godot": "which godot >/dev/null 2>&1 && godot --headless --script addons/godot_mcp/tests/test_runner.gd || /Applications/Godot_mono.app/Contents/MacOS/Godot --headless --script addons/godot_mcp/tests/test_runner.gd",
     "verify": "cd server && npm run verify",
+    "sync:tidesofwar": "rsync -av addons/godot_mcp/ /Volumes/Depo/Projects/tidesofwar/addons/godot_mcp/",
     "clean": "cd server && rm -rf dist node_modules"
   },
   "keywords": ["godot", "mcp", "game-engine", "ai", "gdscript"],

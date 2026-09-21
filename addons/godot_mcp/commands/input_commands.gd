@@ -1,11 +1,18 @@
 @tool
 extends Node
 
+const MCPRuntimeBridge = preload("res://addons/godot_mcp/core/mcp_runtime_bridge.gd")
+
 ## Synthetic Input Simulation for Godot MCP v2.
 ## Enables autonomous playtesting, keyboard, mouse, and action events.
 
 
 func input_simulate_key(params: Dictionary) -> Variant:
+	if EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("simulate_input_key", params)
+		if not rt_res.has("error"):
+			return rt_res
+
 	var key_str: String = params.get("key", "")
 	var pressed: bool = params.get("pressed", true)
 	var echo: bool = params.get("echo", false)
@@ -47,6 +54,11 @@ func input_simulate_key(params: Dictionary) -> Variant:
 
 
 func input_simulate_mouse(params: Dictionary) -> Variant:
+	if EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("simulate_input_mouse", params)
+		if not rt_res.has("error"):
+			return rt_res
+
 	var action: String = params.get("action", "click").to_lower()
 	var pos_array: Array = params.get("position", [0.0, 0.0])
 	var button_index: int = params.get("button", MOUSE_BUTTON_LEFT)
@@ -91,6 +103,11 @@ func input_simulate_mouse(params: Dictionary) -> Variant:
 
 
 func input_simulate_action(params: Dictionary) -> Variant:
+	if EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("simulate_input_action", params)
+		if not rt_res.has("error"):
+			return rt_res
+
 	var action_name: String = params.get("action", "")
 	var pressed: bool = params.get("pressed", true)
 	var strength: float = float(params.get("strength", 1.0))

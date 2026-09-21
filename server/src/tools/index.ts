@@ -23,6 +23,7 @@ import { registerTransactionTools } from './transaction-tools.js';
 import { registerViewportTools } from './viewport-tools.js';
 import { registerInputTools } from './input-tools.js';
 import { registerPlaytestTools } from './playtest-tools.js';
+import { registerLspTools } from './lsp-tools.js';
 import { registerSkillTools } from '../skills/skill-tools.js';
 import { registerExampleTools } from '../skills/example-tools.js';
 
@@ -61,6 +62,7 @@ export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
   registerViewportTools(server, bridge);
   registerInputTools(server, bridge);
   registerPlaytestTools(server, bridge);
+  registerLspTools(server, bridge);
 
   registerSkillTools(server);
   registerExampleTools(server);

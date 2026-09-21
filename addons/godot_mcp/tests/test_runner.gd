@@ -32,6 +32,7 @@ func _run_all_tests() -> void:
 	_test_session_auth()
 	_test_transaction_manager()
 	_test_command_router_dispatch()
+	_test_project_and_input_commands()
 
 
 func _assert_true(condition: bool, test_name: String, error_msg: String = "") -> void:
@@ -94,11 +95,12 @@ func _test_session_auth() -> void:
 
 
 func _test_transaction_manager() -> void:
-	print("\n[Phase 5] Testing TransactionManager Atomic Rollback...")
+	print("\n[Phase 5] Testing TransactionManager Atomic Rollback & Dry Run...")
 	var TxClass = load("res://addons/godot_mcp/core/transaction_manager.gd")
 	var tx = TxClass.new()
 	root.add_child(tx)
 
+	# 1. Test basic begin / commit
 	var begin_res = tx.begin_transaction({"name": "Test Tx", "dry_run": false})
 	_assert_true(begin_res.get("success", false), "Begin transaction")
 	_assert_true(tx.is_active(), "Transaction is active")
@@ -107,6 +109,29 @@ func _test_transaction_manager() -> void:
 	var commit_res = tx.commit_transaction({"transaction_id": tx_id})
 	_assert_true(commit_res.get("success", false), "Commit transaction")
 	_assert_true(not tx.is_active(), "Transaction is inactive after commit")
+
+	# 2. Test REAL Rollback of created and modified files
+	var test_file_path: String = "res://_test_rollback_target.tmp"
+	var rollback_begin = tx.begin_transaction({"name": "Rollback Test", "dry_run": false})
+	_assert_true(rollback_begin.get("success", false), "Begin rollback transaction")
+
+	# Create file under transaction
+	var f := FileAccess.open(test_file_path, FileAccess.WRITE)
+	f.store_string("initial test content")
+	f.close()
+	tx.record_file_create(test_file_path)
+	_assert_true(FileAccess.file_exists(test_file_path), "File created on disk before rollback")
+
+	# Rollback transaction
+	var rb_res = tx.rollback_transaction({"transaction_id": rollback_begin.get("transaction_id")})
+	_assert_true(rb_res.get("success", false), "Rollback executed")
+	_assert_true(not FileAccess.file_exists(test_file_path), "Created file deleted by rollback")
+	_assert_true(not tx.is_active(), "Transaction inactive after rollback")
+
+	# 3. Test Dry Run Simulation
+	var dry_begin = tx.begin_transaction({"name": "Dry Run Test", "dry_run": true})
+	_assert_true(tx.is_dry_run(), "Transaction is in dry_run mode")
+	tx.commit_transaction({"transaction_id": dry_begin.get("transaction_id")})
 
 	tx.queue_free()
 
@@ -118,24 +143,94 @@ func _test_command_router_dispatch() -> void:
 	router.setup(null)
 	root.add_child(router)
 
-	var handshake_msg = JSON.stringify({
-		"id": "req_1",
+	var SessionClass = load("res://addons/godot_mcp/core/session_auth.gd")
+	var valid_token = SessionClass.get_session_token()
+
+	# 1. Test unauthorized handshake (without token)
+	var unauth_msg = JSON.stringify({
+		"id": "unauth_1",
 		"method": "system_handshake",
 		"params": {"protocol_version": "2.0.0"}
 	})
+	var unauth_resp = router.execute(unauth_msg)
+	_assert_true(unauth_resp.has("error"), "Unauthorized handshake rejected")
 
-	var response = router.execute(handshake_msg)
-	# Response may be dictionary or coroutine
-	if response is Object and response.has_signal("completed"):
-		# In case of coroutine
-		pass
-
-	_assert_true(response.has("result") or response.has("id"), "Handshake executed")
-	if response.has("result"):
-		var res_dict = response["result"]
+	# 2. Test authorized handshake (with valid token)
+	var auth_msg = JSON.stringify({
+		"id": "auth_1",
+		"method": "system_handshake",
+		"params": {
+			"protocol_version": "2.0.0",
+			"session_token": valid_token
+		}
+	})
+	var auth_resp = router.execute(auth_msg)
+	_assert_true(auth_resp.has("result"), "Authorized handshake accepted")
+	if auth_resp.has("result"):
+		var res_dict = auth_resp["result"]
 		_assert_true(res_dict.get("protocol_version") == "2.0.0", "Handshake returned protocol 2.0.0")
+		_assert_true(res_dict.get("authenticated") == true, "Handshake authenticated flag is true")
+		_assert_true(not res_dict.has("session_token"), "Handshake does NOT leak session token in response")
 
 	router.queue_free()
+
+
+func _test_project_and_input_commands() -> void:
+	print("\n[Phase 7] Testing Input Map & Command Sandbox Integrity...")
+	var ProjectCmdClass = load("res://addons/godot_mcp/commands/project_commands.gd")
+	var project_cmd = ProjectCmdClass.new()
+	root.add_child(project_cmd)
+
+	# 1. Configure input map action
+	var conf_res = project_cmd.project_configure_input_map({
+		"action": "test_mcp_fire",
+		"deadzone": 0.3,
+		"replace": true,
+		"events": [
+			{"type": "key", "keycode": KEY_SPACE},
+			{"type": "mouse", "button_index": MOUSE_BUTTON_LEFT}
+		]
+	})
+	_assert_true(conf_res.get("success", false), "Configure input map action 'test_mcp_fire'")
+	_assert_true(conf_res.get("events_count", 0) == 2, "Events count configured is 2")
+
+	# 2. Get input map
+	var get_res = project_cmd.project_get_input_map({})
+	var imap = get_res.get("input_map", {})
+	_assert_true(imap.has("test_mcp_fire"), "Input map contains 'test_mcp_fire'")
+	if imap.has("test_mcp_fire"):
+		var act_info = imap["test_mcp_fire"]
+		_assert_true(act_info.get("events", []).size() >= 2, "Action 'test_mcp_fire' has at least 2 events")
+
+	# 3. Autoload sandbox validation
+	var bad_autoload = project_cmd.project_setup_autoload({
+		"name": "BadAutoload",
+		"path": "res://../../etc/passwd"
+	})
+	_assert_true(bad_autoload.has("error"), "Autoload blocked traversal path")
+
+	# Clean up input action
+	if InputMap.has_action("test_mcp_fire"):
+		InputMap.erase_action("test_mcp_fire")
+	ProjectSettings.set_setting("input/test_mcp_fire", null)
+	ProjectSettings.save()
+	project_cmd.queue_free()
+
+	# 4. Resource Sandbox validation
+	var ResCmdClass = load("res://addons/godot_mcp/commands/resource_commands.gd")
+	var res_cmd = ResCmdClass.new()
+	root.add_child(res_cmd)
+	var bad_res = res_cmd.resource_get_info({"path": "res://../../etc/shadow"})
+	_assert_true(bad_res.has("error"), "Resource command blocked traversal path")
+	res_cmd.queue_free()
+
+	# 5. Shader Sandbox validation
+	var ShaderCmdClass = load("res://addons/godot_mcp/commands/shader_commands.gd")
+	var shader_cmd = ShaderCmdClass.new()
+	root.add_child(shader_cmd)
+	var bad_shader = shader_cmd.shader_create({"path": "/tmp/malicious.gdshader"})
+	_assert_true(bad_shader.has("error"), "Shader command blocked outside path")
+	shader_cmd.queue_free()
 
 
 func _find_gd_files_recursive(path: String, results: Array) -> void:

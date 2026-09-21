@@ -1,6 +1,8 @@
 @tool
 extends Node
 
+const MCPRuntimeBridge = preload("res://addons/godot_mcp/core/mcp_runtime_bridge.gd")
+
 ## Autonomous Playtest Runner for Godot MCP v2.
 ## Executes scripted gameplay flows, captures frames, asserts properties, and detects errors.
 
@@ -90,12 +92,20 @@ func playtest_run_flow(params: Dictionary) -> Variant:
 				var expected = step.get("expected", null)
 
 				var pass_check := false
-				var root: Node = get_tree().root
-				var target_node: Node = root.get_node_or_null(node_path) if root else null
 				var actual_val = null
 
-				if target_node:
-					actual_val = target_node.get(property)
+				if EditorInterface.is_playing_scene():
+					var rt_props: Dictionary = MCPRuntimeBridge.query_runtime("get_node_properties", {"path": node_path})
+					if rt_props.has("properties") and rt_props["properties"].has(property):
+						actual_val = rt_props["properties"][property]
+
+				if actual_val == null:
+					var root: Node = get_tree().root
+					var target_node: Node = root.get_node_or_null(node_path) if root else null
+					if target_node:
+						actual_val = target_node.get(property)
+
+				if actual_val != null:
 					if step.has("expected"):
 						pass_check = (actual_val == expected)
 					elif step.has("min"):

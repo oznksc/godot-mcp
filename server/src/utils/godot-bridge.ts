@@ -88,13 +88,23 @@ export class GodotBridge extends EventEmitter {
       this.sessionToken = this.config.sessionToken;
       return;
     }
-    const tokenPath = this.config.sessionKeyPath || path.resolve(process.cwd(), '.godot/mcp_session.key');
-    if (fs.existsSync(tokenPath)) {
-      try {
-        this.sessionToken = fs.readFileSync(tokenPath, 'utf8').trim();
-        logger.debug('bridge', `Loaded session key from ${tokenPath}`);
-      } catch (err) {
-        logger.warn('bridge', `Failed to read session key from ${tokenPath}`, { error: String(err) });
+    const searchDirs = [
+      process.env.GODOT_PROJECT_PATH,
+      process.cwd(),
+      '/Volumes/Depo/Projects/tidesofwar',
+      '/Volumes/Depo/Projects/godot-mcp',
+    ].filter(Boolean) as string[];
+
+    for (const dir of searchDirs) {
+      const keyPath = path.resolve(dir, '.godot/mcp_session.key');
+      if (fs.existsSync(keyPath)) {
+        try {
+          this.sessionToken = fs.readFileSync(keyPath, 'utf8').trim();
+          logger.debug('bridge', `Loaded session key from ${keyPath}`);
+          return;
+        } catch (err) {
+          logger.warn('bridge', `Failed to read session key from ${keyPath}`, { error: String(err) });
+        }
       }
     }
   }
@@ -113,8 +123,9 @@ export class GodotBridge extends EventEmitter {
         logger.info('bridge', 'Socket open, negotiating Godot MCP v2 handshake...');
         this.startPing();
 
+        this.handshakePromise = this.performHandshake();
         try {
-          await this.performHandshake();
+          await this.handshakePromise;
           this.state = 'connected';
           logger.info('bridge', `Connected and ready. Godot: ${this.getEngineVersion()}`);
           this.emit('connected', this.handshakeInfo);
@@ -124,6 +135,8 @@ export class GodotBridge extends EventEmitter {
           this.state = 'connected';
           this.emit('connected');
           resolve();
+        } finally {
+          this.handshakePromise = null;
         }
       });
 
@@ -185,15 +198,49 @@ export class GodotBridge extends EventEmitter {
   }
 
   async sendCommand(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
-    if (this.state === 'handshaking' && method !== 'system_handshake') {
-      if (this.handshakePromise) {
-        await this.handshakePromise;
+    if (method !== 'system_handshake') {
+      if (this.state === 'connecting' || this.state === 'handshaking') {
+        try {
+          await this.waitForReady(5000);
+        } catch {
+          // If timed out waiting, check condition below
+        }
       }
     }
     if (!this.connected || !this.ws) {
       throw new Error('Not connected to Godot');
     }
     return this.rawSendCommand(method, params);
+  }
+
+  private async waitForReady(timeoutMs: number): Promise<void> {
+    if (this.connected) return;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Timed out waiting for Godot connection (${timeoutMs}ms)`));
+      }, timeoutMs);
+
+      const onConnected = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = (err: Error) => {
+        cleanup();
+        reject(err);
+      };
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.off('connected', onConnected);
+        this.off('error', onError);
+        this.off('disconnected', onError);
+      };
+
+      this.once('connected', onConnected);
+      this.once('error', onError);
+      this.once('disconnected', onError);
+    });
   }
 
   private async rawSendCommand(method: string, params: Record<string, unknown> = {}): Promise<unknown> {

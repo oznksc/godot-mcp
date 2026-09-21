@@ -62,13 +62,13 @@ static func get_capabilities() -> Array:
 	return caps
 
 
-static func get_handshake_payload(session_token: String = "") -> Dictionary:
+static func get_handshake_payload(authenticated: bool = true) -> Dictionary:
 	return {
 		"protocol_version": PROTOCOL_VERSION,
 		"engine": get_godot_version(),
 		"capabilities": get_capabilities(),
 		"project_name": ProjectSettings.get_setting("application/config/name", "Godot Project"),
-		"session_token": session_token,
+		"authenticated": authenticated,
 		"os": OS.get_name(),
 		"editor_pid": OS.get_process_id(),
 	}

@@ -106,7 +106,8 @@ func record_node_action(action_type: String, details: Dictionary) -> void:
 
 
 func commit_transaction(params: Dictionary) -> Dictionary:
-	var tx_id: String = params.get("transaction_id", "")
+	var raw_tx = params.get("transaction_id")
+	var tx_id: String = str(raw_tx) if raw_tx != null else ""
 	if _active_transaction.is_empty() or (_active_transaction.get("id", "") != tx_id and not tx_id.is_empty()):
 		return {"error": {"code": -32002, "message": "No matching active transaction found"}}
 
@@ -156,13 +157,14 @@ func rollback_transaction(params: Dictionary) -> Dictionary:
 
 	# If UndoRedo action was created and not yet committed, discard it by aborting or undo
 	if _active_transaction.get("undo_action_created", false) and _undo_redo:
-		# Committing an empty/aborted action or undo
 		_undo_redo.commit_action(false)
 
-	if EditorInterface.get_resource_filesystem():
-		EditorInterface.get_resource_filesystem().scan()
+	if Engine.is_editor_hint() and is_instance_valid(EditorInterface) and EditorInterface.has_method("get_resource_filesystem"):
+		var efs = EditorInterface.get_resource_filesystem()
+		if efs:
+			efs.scan()
 
-	var rolled_back_id: String = _active_transaction["id"]
+	var rolled_back_id: String = _active_transaction.get("id", "")
 	_active_transaction.clear()
 
 	return {

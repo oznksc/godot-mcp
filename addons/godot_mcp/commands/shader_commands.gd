@@ -2,6 +2,7 @@
 extends Node
 
 const NodeUtils = preload("res://addons/godot_mcp/core/node_utils.gd")
+const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
 
 
 func shader_create(params: Dictionary) -> Variant:
@@ -10,6 +11,8 @@ func shader_create(params: Dictionary) -> Variant:
 	var content: String = params.get("content", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+	if not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	if content.is_empty():
 		match type:
@@ -29,7 +32,10 @@ func shader_create(params: Dictionary) -> Variant:
 		return {"error": {"code": -32603, "message": "Failed to create shader file: " + path}}
 	file.store_string(content)
 	file.close()
-	EditorInterface.get_resource_filesystem().scan()
+	if Engine.is_editor_hint() and EditorInterface != null:
+		var efs = EditorInterface.get_resource_filesystem()
+		if efs:
+			efs.scan()
 	return {"success": true, "path": path, "type": type}
 
 
@@ -37,6 +43,8 @@ func shader_read(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+	if not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -51,6 +59,8 @@ func shader_write(params: Dictionary) -> Variant:
 	var content: String = params.get("content", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+	if not PathSandbox.is_path_safe(path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + path}}
 
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
@@ -64,6 +74,9 @@ func shader_assign_material(params: Dictionary) -> Variant:
 	var node_path: String = params.get("node_path", "")
 	var shader_path: String = params.get("shader_path", "")
 	var properties: Dictionary = params.get("properties", {})
+	if not PathSandbox.is_path_safe(shader_path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + shader_path}}
+
 	var root: Node = NodeUtils.get_scene_root()
 	if root == null:
 		return {"error": {"code": -32602, "message": "No scene is currently open"}}

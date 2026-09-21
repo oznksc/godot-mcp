@@ -4,6 +4,7 @@ extends Node
 const SceneSerializer = preload("res://addons/godot_mcp/core/scene_serializer.gd")
 const NodeUtils = preload("res://addons/godot_mcp/core/node_utils.gd")
 const UndoRedoHelper = preload("res://addons/godot_mcp/core/undo_redo_helper.gd")
+const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
 
 
 func scene_create(params: Dictionary) -> Variant:
@@ -56,6 +57,11 @@ func scene_save(params: Dictionary) -> Variant:
 	if path.is_empty():
 		path = root.scene_file_path if not root.scene_file_path.is_empty() else "res://" + root.name + ".tscn"
 
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+	path = check["path"]
+
 	var packed: PackedScene = PackedScene.new()
 	packed.pack(root)
 	var err: Error = ResourceSaver.save(packed, path)
@@ -84,6 +90,12 @@ func scene_open(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+	path = check["path"]
+
 	EditorInterface.open_scene_from_path(path)
 	return {"success": true, "path": path}
 
@@ -114,6 +126,11 @@ func scene_instance(params: Dictionary) -> Variant:
 	var parent_path: String = params.get("parent", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
+
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+	path = check["path"]
 
 	var scene: PackedScene = load(path)
 	if scene == null:
@@ -150,5 +167,45 @@ func scene_export_mesh_library(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Path is required"}}
-	# This is a placeholder — actual implementation depends on GridMap/MeshLibrary workflow
-	return {"success": true, "message": "Mesh library export initiated", "path": path}
+
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+	path = check["path"]
+
+	var root: Node = NodeUtils.get_scene_root()
+	if root == null:
+		return {"error": {"code": -32602, "message": "No scene is currently open to export mesh library from"}}
+
+	var mesh_library := MeshLibrary.new()
+	var item_id: int = 0
+
+	for child in root.get_children():
+		var mesh: Mesh = null
+		if child is MeshInstance3D and child.mesh:
+			mesh = child.mesh
+		elif child.has_node("MeshInstance3D"):
+			var mi: MeshInstance3D = child.get_node("MeshInstance3D")
+			if mi and mi.mesh:
+				mesh = mi.mesh
+
+		if mesh:
+			mesh_library.create_item(item_id)
+			mesh_library.set_item_name(item_id, child.name)
+			mesh_library.set_item_mesh(item_id, mesh)
+			for sub in child.get_children():
+				if sub is StaticBody3D:
+					var shapes: Array = []
+					for s in sub.get_children():
+						if s is CollisionShape3D and s.shape:
+							shapes.append(s.shape)
+							shapes.append(s.transform)
+					if shapes.size() > 0:
+						mesh_library.set_item_shapes(item_id, shapes)
+			item_id += 1
+
+	var err: Error = ResourceSaver.save(mesh_library, path)
+	if err != OK:
+		return {"error": {"code": -32603, "message": "Failed to save MeshLibrary: " + error_string(err)}}
+	EditorInterface.get_resource_filesystem().scan()
+	return {"success": true, "path": path, "items_count": item_id}

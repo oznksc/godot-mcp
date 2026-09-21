@@ -28,12 +28,22 @@ func viewport_capture_editor(params: Dictionary) -> Variant:
 	return _capture_viewport_to_dict(target_viewport, max_width, max_height, view)
 
 
+const MCPRuntimeBridge = preload("res://addons/godot_mcp/core/mcp_runtime_bridge.gd")
+
+
 func viewport_capture_game(params: Dictionary) -> Variant:
 	if not EditorInterface.is_playing_scene():
 		return {"error": {"code": -32602, "message": "No game is currently running"}}
 
 	var max_width: int = params.get("max_width", 1280)
 	var max_height: int = params.get("max_height", 720)
+
+	var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("capture_viewport", {
+		"max_width": max_width,
+		"max_height": max_height
+	})
+	if not rt_res.has("error") and rt_res.has("base64"):
+		return rt_res
 
 	var root_vp: Viewport = get_tree().root
 	if root_vp == null:

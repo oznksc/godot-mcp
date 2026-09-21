@@ -1,6 +1,8 @@
 @tool
 extends Node
 
+const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
+
 
 func import_reimport(params: Dictionary) -> Variant:
 	var files: Array = params.get("files", [])
@@ -71,15 +73,44 @@ func export_run(params: Dictionary) -> Variant:
 		return {"error": {"code": -32602, "message": "Preset name is required"}}
 
 	var preset_found := false
+	var target_preset: Dictionary = {}
 	for item in _load_export_presets():
 		if item["name"] == preset:
 			preset_found = true
+			target_preset = item
 			break
 
 	if not preset_found:
 		return {"error": {"code": -32602, "message": "Export preset not found: " + preset}}
 
-	return {"success": true, "message": "Export initiated", "preset": preset, "output": output_path}
+	if output_path.is_empty():
+		output_path = target_preset.get("export_path", "")
+
+	if output_path.is_empty():
+		return {"error": {"code": -32602, "message": "Output path is required"}}
+
+	var export_flag: String = "--export-debug" if debug else "--export-release"
+	var godot_bin: String = OS.get_executable_path()
+	var args: PackedStringArray = ["--headless", export_flag, preset, output_path]
+
+	var output: Array = []
+	var exit_code: int = OS.execute(godot_bin, args, output, true)
+
+	if exit_code != 0:
+		return {
+			"error": {
+				"code": -32603,
+				"message": "Export failed with exit code " + str(exit_code) + ": " + "\n".join(output)
+			}
+		}
+
+	return {
+		"success": true,
+		"preset": preset,
+		"output_path": output_path,
+		"debug": debug,
+		"cli_output": output
+	}
 
 
 func export_get_presets(_params: Dictionary) -> Variant:

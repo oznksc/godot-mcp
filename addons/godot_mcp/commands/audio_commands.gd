@@ -3,6 +3,7 @@ extends Node
 
 const NodeUtils = preload("res://addons/godot_mcp/core/node_utils.gd")
 const UndoRedoHelper = preload("res://addons/godot_mcp/core/undo_redo_helper.gd")
+const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
 
 
 func audio_create_player(params: Dictionary) -> Variant:
@@ -13,6 +14,9 @@ func audio_create_player(params: Dictionary) -> Variant:
 	var root: Node = NodeUtils.get_scene_root()
 	if root == null:
 		return {"error": {"code": -32602, "message": "No scene is currently open"}}
+
+	if not stream_path.is_empty() and not PathSandbox.is_path_safe(stream_path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + stream_path}}
 
 	var parent: Node = root
 	if not parent_path.is_empty():
@@ -47,6 +51,9 @@ func audio_set_stream(params: Dictionary) -> Variant:
 	var root: Node = NodeUtils.get_scene_root()
 	if root == null:
 		return {"error": {"code": -32602, "message": "No scene is currently open"}}
+
+	if not PathSandbox.is_path_safe(stream_path):
+		return {"error": {"code": -32001, "message": "Path traversal or invalid path: " + stream_path}}
 
 	var node: Node = root.get_node_or_null(path)
 	if node == null:

@@ -49,6 +49,7 @@ func _load_command_modules() -> void:
 
 	_scene_commands = preload("res://addons/godot_mcp/commands/scene_commands.gd").new()
 	_node_commands = preload("res://addons/godot_mcp/commands/node_commands.gd").new()
+	_node_commands.setup(_transaction_manager)
 	_script_commands = preload("res://addons/godot_mcp/commands/script_commands.gd").new()
 	_script_commands.setup(_transaction_manager)
 
@@ -170,8 +171,14 @@ func _handle_system(method: String, params: Dictionary) -> Variant:
 	match method:
 		"system_handshake":
 			var client_token: String = params.get("session_token", "")
-			var token: String = SessionAuth.get_session_token()
-			var payload: Dictionary = CompatHelper.get_handshake_payload(token)
+			if not SessionAuth.validate_token(client_token):
+				return {
+					"error": {
+						"code": -32000,
+						"message": "Unauthorized: invalid or missing session token. Provide key from .godot/mcp_session.key"
+					}
+				}
+			var payload: Dictionary = CompatHelper.get_handshake_payload(true)
 			payload["client_compatible"] = true
 			return payload
 		"system_get_capabilities":

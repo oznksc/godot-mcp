@@ -1,11 +1,18 @@
 @tool
 extends Node
 
+const MCPRuntimeBridge = preload("res://addons/godot_mcp/core/mcp_runtime_bridge.gd")
+
 ## Remote Scene Tree and Runtime Profiler Inspector for Godot MCP v2.
 ## Enables inspecting and modifying active gameplay nodes, monitors, and performance budgets.
 
 
 func runtime_get_remote_scene_tree(_params: Dictionary = {}) -> Variant:
+	if EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("get_scene_tree")
+		if not rt_res.has("error"):
+			return rt_res
+
 	var root: Node = get_tree().root
 	if root == null:
 		return {"error": {"code": -32602, "message": "Root node not available"}}
@@ -21,6 +28,11 @@ func runtime_get_node_properties(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	if path.is_empty():
 		return {"error": {"code": -32602, "message": "Node path is required"}}
+
+	if EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("get_node_properties", {"path": path})
+		if not rt_res.has("error"):
+			return rt_res
 
 	var root: Node = get_tree().root
 	var target: Node = root.get_node_or_null(path)
@@ -52,6 +64,15 @@ func runtime_set_node_property(params: Dictionary) -> Variant:
 	if path.is_empty() or property.is_empty():
 		return {"error": {"code": -32602, "message": "Path and property name are required"}}
 
+	if EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("set_node_property", {
+			"path": path,
+			"property": property,
+			"value": value
+		})
+		if not rt_res.has("error"):
+			return rt_res
+
 	var root: Node = get_tree().root
 	var target: Node = root.get_node_or_null(path)
 	if target == null:
@@ -70,6 +91,11 @@ func runtime_set_node_property(params: Dictionary) -> Variant:
 
 
 func runtime_get_performance_metrics(_params: Dictionary = {}) -> Variant:
+	if EditorInterface.is_playing_scene():
+		var rt_res: Dictionary = MCPRuntimeBridge.query_runtime("get_performance")
+		if not rt_res.has("error"):
+			return rt_res
+
 	var perf := {
 		"fps": Performance.get_monitor(Performance.TIME_FPS),
 		"process_time_ms": Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,

@@ -3,12 +3,21 @@ extends Node
 
 const NodeUtils = preload("res://addons/godot_mcp/core/node_utils.gd")
 const UndoRedoHelper = preload("res://addons/godot_mcp/core/undo_redo_helper.gd")
+var _transaction_manager: Node
+
+
+func setup(tx_mgr: Node = null) -> void:
+	_transaction_manager = tx_mgr
 
 
 func node_add(params: Dictionary) -> Variant:
 	var type: String = params.get("type", "Node2D")
 	var node_name: String = params.get("name", type)
 	var parent_path: String = params.get("parent", "")
+
+	if _transaction_manager and _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+		_transaction_manager.record_node_action("node_add", {"type": type, "name": node_name, "parent": parent_path})
+		return {"success": true, "dry_run": true, "simulated_action": "node_add", "type": type, "name": node_name}
 
 	var root: Node = NodeUtils.get_scene_root()
 	if root == null:
@@ -28,6 +37,8 @@ func node_add(params: Dictionary) -> Variant:
 
 	node.name = node_name
 	UndoRedoHelper.add_node(parent, node, node_name)
+	if _transaction_manager and _transaction_manager.has_method("record_node_action"):
+		_transaction_manager.record_node_action("node_add", {"type": type, "name": node_name, "parent": parent_path})
 	return {"success": true, "node": node_name, "type": type, "parent": parent_path if not parent_path.is_empty() else root.name}
 
 

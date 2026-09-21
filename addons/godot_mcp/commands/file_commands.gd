@@ -58,12 +58,16 @@ func file_write(params: Dictionary) -> Variant:
 
 	path = check["path"]
 
-	# Transaction backup
-	if _transaction_manager and _transaction_manager.has_method("record_file_modify"):
-		if FileAccess.file_exists(path):
+	# Transaction backup and dry-run check
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
 			_transaction_manager.record_file_modify(path)
-		else:
-			_transaction_manager.record_file_create(path)
+			return {"success": true, "dry_run": true, "simulated_action": "file_write", "path": path}
+		elif _transaction_manager.has_method("record_file_modify"):
+			if FileAccess.file_exists(path):
+				_transaction_manager.record_file_modify(path)
+			else:
+				_transaction_manager.record_file_create(path)
 
 	# Ensure parent directory exists
 	var parts: PackedStringArray = path.replace("res://", "").split("/")
@@ -92,9 +96,13 @@ func file_delete(params: Dictionary) -> Variant:
 
 	path = check["path"]
 
-	# Transaction backup
-	if _transaction_manager and _transaction_manager.has_method("record_file_modify"):
-		_transaction_manager.record_file_modify(path)
+	# Transaction backup and dry-run check
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+			_transaction_manager.record_file_modify(path)
+			return {"success": true, "dry_run": true, "simulated_action": "file_delete", "path": path}
+		elif _transaction_manager.has_method("record_file_modify"):
+			_transaction_manager.record_file_modify(path)
 
 	var dir: DirAccess = DirAccess.open("res://")
 	if dir == null:
@@ -121,9 +129,12 @@ func file_rename(params: Dictionary) -> Variant:
 	old_path = check_old["path"]
 	new_path = check_new["path"]
 
-	if _transaction_manager and _transaction_manager.has_method("record_file_modify"):
-		_transaction_manager.record_file_modify(old_path)
-		_transaction_manager.record_file_create(new_path)
+	if _transaction_manager:
+		if _transaction_manager.has_method("is_dry_run") and _transaction_manager.is_dry_run():
+			return {"success": true, "dry_run": true, "simulated_action": "file_rename", "old_path": old_path, "new_path": new_path}
+		elif _transaction_manager.has_method("record_file_modify"):
+			_transaction_manager.record_file_modify(old_path)
+			_transaction_manager.record_file_create(new_path)
 
 	var dir: DirAccess = DirAccess.open("res://")
 	if dir == null:
