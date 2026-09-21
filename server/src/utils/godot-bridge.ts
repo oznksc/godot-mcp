@@ -65,6 +65,10 @@ export class GodotBridge extends EventEmitter {
   }
 
   getStatus(): Record<string, unknown> {
+    if (!this.connected && this.state === 'disconnected') {
+      this.reconnectCount = 0;
+      this.connect().catch(() => {});
+    }
     return {
       connected: this.connected,
       state: this.state,
@@ -198,6 +202,16 @@ export class GodotBridge extends EventEmitter {
   }
 
   async sendCommand(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    if (!this.connected || !this.ws) {
+      if (this.state === 'disconnected') {
+        this.reconnectCount = 0;
+        try {
+          await this.connect();
+        } catch {
+          // Error handled in connection state check
+        }
+      }
+    }
     if (method !== 'system_handshake') {
       if (this.state === 'connecting' || this.state === 'handshaking') {
         try {
