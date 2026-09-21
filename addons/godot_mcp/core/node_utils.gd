@@ -45,3 +45,19 @@ static func ensure_scene_open() -> Node:
 	if root == null:
 		return null
 	return root
+
+
+## Returns a Dictionary of all storage-relevant properties for a node,
+## skipping internal/private names. Shared by scene_serializer and node_commands
+## to avoid duplicated get_property_list() iteration logic.
+static func get_serializable_properties(node: Node) -> Dictionary:
+	var props: Dictionary = {}
+	for prop in node.get_property_list():
+		var prop_name: String = prop["name"]
+		if prop_name.begins_with("_") or prop_name in ["script", "metadata"]:
+			continue
+		if prop["usage"] & PROPERTY_USAGE_STORAGE:
+			var value: Variant = node.get(prop_name)
+			if value != null:
+				props[prop_name] = value
+	return props

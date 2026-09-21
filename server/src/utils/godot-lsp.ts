@@ -16,6 +16,8 @@ export class GodotLSPClient extends EventEmitter {
   private host: string;
   private port: number;
   private buffer = '';
+  private bufferChunks: Buffer[] = [];
+  private bufferLength = 0;
   private nextId = 1;
   private pendingRequests = new Map<number | string, { resolve: (val: unknown) => void; reject: (err: Error) => void }>();
   private connected = false;
@@ -39,8 +41,8 @@ export class GodotLSPClient extends EventEmitter {
         resolve(true);
       });
 
-      this.socket.on('data', (data) => {
-        this.handleData(data.toString());
+      this.socket.on('data', (data: Buffer) => {
+        this.handleData(data);
       });
 
       this.socket.on('error', (err) => {
@@ -97,27 +99,37 @@ export class GodotLSPClient extends EventEmitter {
     });
   }
 
-  private handleData(chunk: string): void {
-    this.buffer += chunk;
+  private handleData(chunk: Buffer): void {
+    this.bufferChunks.push(chunk);
+    this.bufferLength += chunk.length;
+
     while (true) {
-      const headerEnd = this.buffer.indexOf('\r\n\r\n');
+      // Only convert to string when we need to scan for headers—avoids
+      // repeated full-buffer string allocations on every incoming chunk.
+      const current = Buffer.concat(this.bufferChunks).toString('utf8');
+
+      const headerEnd = current.indexOf('\r\n\r\n');
       if (headerEnd === -1) break;
 
-      const header = this.buffer.substring(0, headerEnd);
+      const header = current.substring(0, headerEnd);
       const match = header.match(/Content-Length:\s*(\d+)/i);
       if (!match) {
-        this.buffer = this.buffer.substring(headerEnd + 4);
+        const remaining = current.substring(headerEnd + 4);
+        this.bufferChunks = [Buffer.from(remaining, 'utf8')];
+        this.bufferLength = this.bufferChunks[0].length;
         continue;
       }
 
       const contentLength = parseInt(match[1], 10);
       const bodyStart = headerEnd + 4;
-      if (this.buffer.length < bodyStart + contentLength) {
+      if (current.length < bodyStart + contentLength) {
         break; // Wait for rest of message
       }
 
-      const body = this.buffer.substring(bodyStart, bodyStart + contentLength);
-      this.buffer = this.buffer.substring(bodyStart + contentLength);
+      const body = current.substring(bodyStart, bodyStart + contentLength);
+      const remaining = current.substring(bodyStart + contentLength);
+      this.bufferChunks = remaining.length > 0 ? [Buffer.from(remaining, 'utf8')] : [];
+      this.bufferLength = remaining.length;
 
       try {
         const parsed = JSON.parse(body);

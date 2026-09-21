@@ -128,14 +128,12 @@ func node_get_properties(params: Dictionary) -> Variant:
 	if node == null:
 		return {"error": {"code": -32602, "message": "Node not found: " + path}}
 
+	# Delegate to shared helper to avoid duplicating get_property_list() logic.
+	# Result includes type annotation for the MCP response schema.
+	var raw: Dictionary = NodeUtils.get_serializable_properties(node)
 	var props: Dictionary = {}
-	var property_list: Array = node.get_property_list()
-	for prop in property_list:
-		var prop_name: String = prop["name"]
-		if prop_name.begins_with("_"):
-			continue
-		if prop["usage"] & PROPERTY_USAGE_STORAGE:
-			props[prop_name] = {"type": prop["type"], "value": node.get(prop_name)}
+	for prop_name in raw:
+		props[prop_name] = {"type": typeof(raw[prop_name]), "value": raw[prop_name]}
 	return {"node": path, "properties": props}
 
 

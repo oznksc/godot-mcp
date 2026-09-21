@@ -36,6 +36,12 @@ var _input_commands: Node
 var _playtest_commands: Node
 var _runtime_inspector: Node
 
+# Dispatch table built at setup time for O(1) routing.
+# _prefix_map: prefix_string -> Array[Node]  (multiple modules can share a prefix e.g. "runtime_")
+# _method_cache: method_name -> Node  (lazily populated on first call, then cached)
+var _prefix_map: Dictionary = {}
+var _method_cache: Dictionary = {}
+
 
 func setup(websocket_client: Node) -> void:
 	_websocket_client = websocket_client
@@ -91,6 +97,46 @@ func _load_command_modules() -> void:
 		_viewport_commands, _input_commands, _playtest_commands, _runtime_inspector]:
 		add_child(module)
 
+	_build_dispatch_table()
+
+
+func _build_dispatch_table() -> void:
+	## Builds a prefix -> [module, ...] map at startup so _dispatch() avoids
+	## O(n) linear scan and has_method() reflection on every RPC call.
+	var entries: Array = [
+		["transaction_", _transaction_manager],
+		["viewport_", _viewport_commands],
+		["input_", _input_commands],
+		["playtest_", _playtest_commands],
+		["runtime_", _runtime_inspector],
+		["runtime_", _runtime_commands],
+		["scene_", _scene_commands],
+		["node_", _node_commands],
+		["script_", _script_commands],
+		["resource_", _resource_commands],
+		["project_", _project_commands],
+		["editor_", _editor_commands],
+		["file_", _file_commands],
+		["signal_", _signal_commands],
+		["debug_", _debug_commands],
+		["animation_", _animation_commands],
+		["shader_", _shader_commands],
+		["physics_", _physics_commands],
+		["ui_", _ui_commands],
+		["audio_", _audio_commands],
+		["lighting_", _lighting_commands],
+		["particles_", _particles_commands],
+		["import_", _import_export_commands],
+		["export_", _import_export_commands],
+		["classdb_", _classdb_commands],
+	]
+	for entry in entries:
+		var prefix: String = entry[0]
+		var module: Node = entry[1]
+		if not _prefix_map.has(prefix):
+			_prefix_map[prefix] = []
+		_prefix_map[prefix].append(module)
+
 
 func execute(raw_message: String) -> Dictionary:
 	var parsed: Variant = JSON.parse_string(raw_message)
@@ -133,39 +179,21 @@ func _dispatch(method: String, params: Dictionary) -> Variant:
 	if method.begins_with("system_"):
 		return _handle_system(method, params)
 
-	var modules: Array = [
-		["transaction_", _transaction_manager],
-		["viewport_", _viewport_commands],
-		["input_", _input_commands],
-		["playtest_", _playtest_commands],
-		["runtime_", _runtime_inspector],
-		["runtime_", _runtime_commands],
-		["scene_", _scene_commands],
-		["node_", _node_commands],
-		["script_", _script_commands],
-		["resource_", _resource_commands],
-		["project_", _project_commands],
-		["editor_", _editor_commands],
-		["file_", _file_commands],
-		["signal_", _signal_commands],
-		["debug_", _debug_commands],
-		["animation_", _animation_commands],
-		["shader_", _shader_commands],
-		["physics_", _physics_commands],
-		["ui_", _ui_commands],
-		["audio_", _audio_commands],
-		["lighting_", _lighting_commands],
-		["particles_", _particles_commands],
-		["import_", _import_export_commands],
-		["export_", _import_export_commands],
-		["classdb_", _classdb_commands],
-	]
+	# Fast path: method already resolved in cache from a previous call.
+	if _method_cache.has(method):
+		return await _method_cache[method].call(method, params)
 
-	for module_entry in modules:
-		var prefix: String = module_entry[0]
-		var module: Node = module_entry[1]
-		if method.begins_with(prefix) and module.has_method(method):
-			return await module.call(method, params)
+	# Extract the prefix (everything up to and including the first "_" separator
+	# after the namespace, e.g. "node_get_properties" -> "node_").
+	var first_underscore: int = method.find("_")
+	if first_underscore >= 0:
+		var prefix: String = method.substr(0, first_underscore + 1)
+		if _prefix_map.has(prefix):
+			for module in _prefix_map[prefix]:
+				if module.has_method(method):
+					# Cache for next time — has_method() is called at most once per unique method.
+					_method_cache[method] = module
+					return await module.call(method, params)
 
 	return {"error": {"code": -32601, "message": "Method not found: " + method}}
 

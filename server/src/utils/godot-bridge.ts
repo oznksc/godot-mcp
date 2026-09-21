@@ -65,10 +65,10 @@ export class GodotBridge extends EventEmitter {
   }
 
   getStatus(): Record<string, unknown> {
-    if (!this.connected && this.state === 'disconnected') {
-      this.reconnectCount = 0;
-      this.connect().catch(() => {});
-    }
+    // NOTE: getStatus() is intentionally read-only — it does NOT trigger reconnect.
+    // Reconnection is handled by tryReconnect() after a disconnect event, and by
+    // sendCommand() when a command is issued. Calling connect() here caused cascading
+    // reconnect attempts on every status poll from the MCP client.
     return {
       connected: this.connected,
       state: this.state,
@@ -178,7 +178,12 @@ export class GodotBridge extends EventEmitter {
   }
 
   private async performHandshake(): Promise<void> {
-    this.loadSessionToken();
+    // Only reload session token from disk if we don't already have one.
+    // loadSessionToken() does fs.existsSync + fs.readFileSync across 4 dirs on every call;
+    // the constructor already runs it once, so repeated calls on reconnect are wasteful.
+    if (!this.sessionToken) {
+      this.loadSessionToken();
+    }
     const result = (await this.rawSendCommand('system_handshake', {
       protocol_version: '2.0.0',
       session_token: this.sessionToken,
@@ -332,15 +337,23 @@ export class GodotBridge extends EventEmitter {
     }
 
     this.reconnectCount++;
+
+    // Exponential backoff: delay doubles each attempt, capped at 30s.
+    // e.g. attempt 1 → 2s, 2 → 4s, 3 → 8s, 4 → 16s, 5 → 30s
+    const delay = Math.min(
+      this.config.reconnectDelay * Math.pow(2, this.reconnectCount - 1),
+      30000
+    );
+
     logger.info(
       'bridge',
-      `Reconnecting in ${this.config.reconnectDelay}ms (attempt ${this.reconnectCount}/${this.config.reconnectAttempts})`
+      `Reconnecting in ${delay}ms (attempt ${this.reconnectCount}/${this.config.reconnectAttempts})`
     );
 
     setTimeout(() => {
       this.connect().catch(() => {
         // Error handled in connect()
       });
-    }, this.config.reconnectDelay);
+    }, delay);
   }
 }

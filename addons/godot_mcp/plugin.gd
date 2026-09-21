@@ -75,7 +75,11 @@ func _on_disconnected() -> void:
 
 
 func _on_message(message: String) -> void:
-	_log_panel.add_log("Received: " + message.left(200))
+	# Guard log operations behind visibility checks — building substrings on every
+	# message is wasteful when the log panel is hidden (e.g. during automated runs).
+	if _log_panel.visible:
+		_log_panel.add_log("Received: " + message.left(200))
 	var response: Dictionary = await _command_router.execute(message)
 	_websocket_client.send_response(response)
-	_log_panel.add_log("Sent: " + JSON.stringify(response).left(200))
+	if _log_panel.visible:
+		_log_panel.add_log("Sent: " + JSON.stringify(response).left(200))

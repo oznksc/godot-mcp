@@ -23,6 +23,8 @@ function log(level: LogLevel, scope: string, message: string, data?: unknown): v
   const timestamp = new Date().toISOString();
   const label = LEVEL_LABELS[level];
   const prefix = `[${timestamp}] [${label}] [${scope}]`;
+  // JSON.stringify is deferred until after the level check to avoid serializing
+  // large data objects (e.g. full scene trees) when the log level suppresses output.
   const suffix = data !== undefined ? ` ${JSON.stringify(data)}` : '';
   process.stderr.write(`${prefix} ${message}${suffix}\n`);
 }

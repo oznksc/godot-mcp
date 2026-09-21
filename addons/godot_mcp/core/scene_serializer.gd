@@ -37,16 +37,13 @@ static func _serialize_node(node: Node) -> Dictionary:
 
 
 static func _get_node_properties(node: Node) -> Dictionary:
+	# Delegate to NodeUtils to avoid duplicating get_property_list() filtering.
+	# NodeUtils.get_serializable_properties() returns raw Variant values;
+	# we then pass each through _serialize_value() for JSON-safe encoding.
+	var raw: Dictionary = NodeUtils.get_serializable_properties(node)
 	var props: Dictionary = {}
-	var property_list: Array = node.get_property_list()
-	for prop in property_list:
-		var name: String = prop["name"]
-		if name.begins_with("_") or name in ["script", "metadata"]:
-			continue
-		if prop["usage"] & PROPERTY_USAGE_STORAGE:
-			var value: Variant = node.get(name)
-			if value != null:
-				props[name] = _serialize_value(value)
+	for key in raw:
+		props[key] = _serialize_value(raw[key])
 	return props
 
 
