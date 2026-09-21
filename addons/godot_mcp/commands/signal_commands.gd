@@ -123,5 +123,7 @@ func signal_emit(params: Dictionary) -> Variant:
 	if not node.has_signal(signal_name):
 		return {"error": {"code": -32602, "message": "Signal not found: " + signal_name}}
 
-	node.emit_signal(signal_name, *args)
+	var emit_args: Array = [signal_name]
+	emit_args.append_array(args)
+	node.callv("emit_signal", emit_args)
 	return {"success": true, "emitted": signal_name, "on": path}

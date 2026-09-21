@@ -2,6 +2,7 @@ export interface GodotCommand {
   id: string;
   method: string;
   params: Record<string, unknown>;
+  token?: string;
 }
 
 export interface GodotResponse {
@@ -53,7 +54,7 @@ export interface NodeProperty {
   hint_string?: string;
 }
 
-export type GodotConnectionState = 'disconnected' | 'connecting' | 'connected';
+export type GodotConnectionState = 'disconnected' | 'connecting' | 'handshaking' | 'connected';
 
 export interface WebSocketConfig {
   host: string;
@@ -62,4 +63,50 @@ export interface WebSocketConfig {
   reconnectDelay: number;
   pingInterval: number;
   commandTimeout: number;
+  sessionToken?: string;
+  sessionKeyPath?: string;
+}
+
+export interface HandshakeInfo {
+  protocol_version: string;
+  engine: {
+    major: number;
+    minor: number;
+    patch: number;
+    status: string;
+    build: string;
+    string: string;
+    mono?: boolean;
+  };
+  capabilities: string[];
+  project_name: string;
+  session_token?: string;
+  os?: string;
+  editor_pid?: number;
+  client_compatible?: boolean;
+}
+
+export interface ViewportCaptureResult {
+  view: string;
+  format: string;
+  width: number;
+  height: number;
+  original_width?: number;
+  original_height?: number;
+  base64: string;
+}
+
+export interface PlaytestStep {
+  type: 'wait' | 'key' | 'action' | 'mouse' | 'screenshot' | 'assert_node';
+  seconds?: number;
+  duration?: number;
+  key?: string;
+  action?: string;
+  position?: [number, number];
+  tag?: string;
+  node_path?: string;
+  property?: string;
+  expected?: unknown;
+  min?: number;
+  max?: number;
 }

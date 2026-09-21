@@ -19,13 +19,17 @@ import { registerLightingTools } from './lighting-tools.js';
 import { registerParticlesTools } from './particles-tools.js';
 import { registerImportExportTools } from './import-export-tools.js';
 import { registerClassdbTools } from './classdb-tools.js';
+import { registerTransactionTools } from './transaction-tools.js';
+import { registerViewportTools } from './viewport-tools.js';
+import { registerInputTools } from './input-tools.js';
+import { registerPlaytestTools } from './playtest-tools.js';
 import { registerSkillTools } from '../skills/skill-tools.js';
 import { registerExampleTools } from '../skills/example-tools.js';
 
 export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
   server.tool(
     'godot_connection_status',
-    'Get MCP-to-Godot bridge connection health and runtime configuration',
+    'Get MCP-to-Godot bridge connection health, version handshake, and capabilities',
     {},
     async () => ({
       content: [{ type: 'text' as const, text: JSON.stringify(bridge.getStatus(), null, 2) }],
@@ -51,6 +55,13 @@ export function registerAllTools(server: McpServer, bridge: GodotBridge): void {
   registerParticlesTools(server, bridge);
   registerImportExportTools(server, bridge);
   registerClassdbTools(server, bridge);
+
+  // Godot MCP v2 Tools
+  registerTransactionTools(server, bridge);
+  registerViewportTools(server, bridge);
+  registerInputTools(server, bridge);
+  registerPlaytestTools(server, bridge);
+
   registerSkillTools(server);
   registerExampleTools(server);
 }

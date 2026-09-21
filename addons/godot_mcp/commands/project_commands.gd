@@ -3,7 +3,6 @@ extends Node
 
 
 func project_get_info(_params: Dictionary) -> Variant:
-	var settings: Dictionary = ProjectSettings
 	return {
 		"name": ProjectSettings.get_setting("application/config/name", "Unnamed"),
 		"version": ProjectSettings.get_setting("application/config/version", ""),
@@ -69,7 +68,10 @@ func project_setup_autoload(params: Dictionary) -> Variant:
 	if name.is_empty() or path.is_empty():
 		return {"error": {"code": -32602, "message": "Name and path are required"}}
 
-	EditorInterface.add_autoload_singleton(name, path)
+	ProjectSettings.set_setting("autoload/" + name, ("*" if enabled else "") + path)
+	var err: Error = ProjectSettings.save()
+	if err != OK:
+		return {"error": {"code": -32603, "message": "Failed to save autoload: " + error_string(err)}}
 	return {"success": true, "name": name, "path": path, "enabled": enabled}
 
 
@@ -78,7 +80,10 @@ func project_remove_autoload(params: Dictionary) -> Variant:
 	if name.is_empty():
 		return {"error": {"code": -32602, "message": "Name is required"}}
 
-	EditorInterface.remove_autoload_singleton(name)
+	ProjectSettings.set_setting("autoload/" + name, null)
+	var err: Error = ProjectSettings.save()
+	if err != OK:
+		return {"error": {"code": -32603, "message": "Failed to remove autoload: " + error_string(err)}}
 	return {"success": true, "name": name}
 
 
@@ -88,12 +93,15 @@ func project_get_class_list(_params: Dictionary) -> Variant:
 
 
 func project_get_export_presets(_params: Dictionary) -> Variant:
+	var config := ConfigFile.new()
+	if config.load("res://export_presets.cfg") != OK:
+		return {"presets": []}
 	var presets: Array = []
-	for preset in EditorExport.export_presets:
-		presets.append({
-			"name": preset.name,
-			"platform": preset.platform,
-			"export_debug": preset.export_debug_path,
-			"export_release": preset.export_release_path,
-		})
+	for section in config.get_sections():
+		if section.begins_with("preset.") and not section.contains(".options"):
+			presets.append({
+				"name": config.get_value(section, "name", ""),
+				"platform": config.get_value(section, "platform", ""),
+				"export_path": config.get_value(section, "export_path", ""),
+			})
 	return {"presets": presets}

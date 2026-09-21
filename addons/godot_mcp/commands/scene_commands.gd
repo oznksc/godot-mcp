@@ -58,7 +58,7 @@ func scene_save(params: Dictionary) -> Variant:
 
 	var packed: PackedScene = PackedScene.new()
 	packed.pack(root)
-	var err: Error = ResourceSaver.save(path, packed)
+	var err: Error = ResourceSaver.save(packed, path)
 	if err != OK:
 		return {"error": {"code": -32603, "message": "Failed to save scene: " + error_string(err)}}
 	return {"success": true, "path": path}

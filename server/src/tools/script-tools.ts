@@ -69,12 +69,26 @@ export function registerScriptTools(server: McpServer, bridge: GodotBridge): voi
 
   server.tool(
     'script_validate',
-    'Validate GDScript syntax without saving',
+    'Validate GDScript syntax and AST without saving',
     {
-      content: z.string().describe('GDScript code to validate'),
+      content: z.string().optional().describe('GDScript code to validate'),
+      path: z.string().optional().describe('Existing script path to validate'),
     },
-    async ({ content }) => {
-      const result = await bridge.sendCommand('script_validate', { content });
+    async ({ content, path }) => {
+      const result = await bridge.sendCommand('script_validate', { content, path });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'script_analyze_scene_bindings',
+    'Analyze consistency between a script and a scene: verifies that all @onready node paths ($Node) exist and checks declared signals',
+    {
+      script_path: z.string().describe('Script path (res://...)'),
+      scene_path: z.string().describe('Scene path (res://...)'),
+    },
+    async ({ script_path, scene_path }) => {
+      const result = await bridge.sendCommand('script_analyze_scene_bindings', { script_path, scene_path });
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     }
   );

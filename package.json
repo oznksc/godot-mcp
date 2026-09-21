@@ -1,13 +1,16 @@
 {
   "name": "godot-mcp",
-  "version": "1.0.0",
-  "description": "MCP Server for Godot Game Engine — Full integration with 130+ tools",
+  "version": "2.0.0",
+  "description": "Godot MCP v2 — Autonomous AI game development agent for Godot Engine",
   "type": "module",
   "scripts": {
     "build": "cd server && npm run build",
     "dev": "cd server && npm run dev",
     "start": "cd server && npm start",
     "setup": "cd server && npm install && npm run build",
+    "test": "npm run test:server && npm run test:godot",
+    "test:server": "cd server && npm test",
+    "test:godot": "which godot >/dev/null 2>&1 && godot --headless --script addons/godot_mcp/tests/test_runner.gd || /Applications/Godot_mono.app/Contents/MacOS/Godot --headless --script addons/godot_mcp/tests/test_runner.gd",
     "verify": "cd server && npm run verify",
     "clean": "cd server && rm -rf dist node_modules"
   },

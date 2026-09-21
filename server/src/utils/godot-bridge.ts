@@ -1,7 +1,15 @@
 import WebSocket from 'ws';
 import { EventEmitter } from 'events';
+import * as fs from 'fs';
+import * as path from 'path';
 import { logger } from './logger.js';
-import type { GodotCommand, GodotResponse, WebSocketConfig } from '../types.js';
+import type {
+  GodotCommand,
+  GodotResponse,
+  WebSocketConfig,
+  HandshakeInfo,
+  GodotConnectionState,
+} from '../types.js';
 
 const DEFAULT_CONFIG: WebSocketConfig = {
   host: '127.0.0.1',
@@ -15,29 +23,57 @@ const DEFAULT_CONFIG: WebSocketConfig = {
 export class GodotBridge extends EventEmitter {
   private ws: WebSocket | null = null;
   private config: WebSocketConfig;
-  private pendingRequests = new Map<string, {
-    resolve: (value: unknown) => void;
-    reject: (reason: Error) => void;
-    timer: ReturnType<typeof setTimeout>;
-  }>();
+  private pendingRequests = new Map<
+    string,
+    {
+      resolve: (value: unknown) => void;
+      reject: (reason: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
   private reconnectCount = 0;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
-  private _connected = false;
+  private state: GodotConnectionState = 'disconnected';
+  private handshakeInfo: HandshakeInfo | null = null;
+  private sessionToken = '';
+  private handshakePromise: Promise<void> | null = null;
 
   constructor(config: Partial<WebSocketConfig> = {}) {
     super();
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.loadSessionToken();
   }
 
   get connected(): boolean {
-    return this._connected;
+    return this.state === 'connected';
+  }
+
+  get connectionState(): GodotConnectionState {
+    return this.state;
+  }
+
+  getHandshakeInfo(): HandshakeInfo | null {
+    return this.handshakeInfo;
+  }
+
+  hasCapability(capability: string): boolean {
+    return this.handshakeInfo?.capabilities?.includes(capability) ?? false;
+  }
+
+  getEngineVersion(): string {
+    return this.handshakeInfo?.engine?.string ?? 'Unknown';
   }
 
   getStatus(): Record<string, unknown> {
     return {
-      connected: this._connected,
+      connected: this.connected,
+      state: this.state,
       host: this.config.host,
       port: this.config.port,
+      protocol_version: this.handshakeInfo?.protocol_version ?? 'unknown',
+      engine: this.handshakeInfo?.engine ?? null,
+      capabilities: this.handshakeInfo?.capabilities ?? [],
+      project_name: this.handshakeInfo?.project_name ?? null,
       reconnect_attempts: this.config.reconnectAttempts,
       reconnect_count: this.reconnectCount,
       reconnect_delay_ms: this.config.reconnectDelay,
@@ -47,20 +83,48 @@ export class GodotBridge extends EventEmitter {
     };
   }
 
+  private loadSessionToken(): void {
+    if (this.config.sessionToken) {
+      this.sessionToken = this.config.sessionToken;
+      return;
+    }
+    const tokenPath = this.config.sessionKeyPath || path.resolve(process.cwd(), '.godot/mcp_session.key');
+    if (fs.existsSync(tokenPath)) {
+      try {
+        this.sessionToken = fs.readFileSync(tokenPath, 'utf8').trim();
+        logger.debug('bridge', `Loaded session key from ${tokenPath}`);
+      } catch (err) {
+        logger.warn('bridge', `Failed to read session key from ${tokenPath}`, { error: String(err) });
+      }
+    }
+  }
+
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const url = `ws://${this.config.host}:${this.config.port}`;
+      this.state = 'connecting';
       logger.info('bridge', `Connecting to Godot at ${url}`);
 
       this.ws = new WebSocket(url);
 
-      this.ws.on('open', () => {
-        this._connected = true;
+      this.ws.on('open', async () => {
         this.reconnectCount = 0;
-        logger.info('bridge', 'Connected to Godot');
+        this.state = 'handshaking';
+        logger.info('bridge', 'Socket open, negotiating Godot MCP v2 handshake...');
         this.startPing();
-        this.emit('connected');
-        resolve();
+
+        try {
+          await this.performHandshake();
+          this.state = 'connected';
+          logger.info('bridge', `Connected and ready. Godot: ${this.getEngineVersion()}`);
+          this.emit('connected', this.handshakeInfo);
+          resolve();
+        } catch (err) {
+          logger.warn('bridge', `Handshake warning (continuing with v1 compatibility): ${String(err)}`);
+          this.state = 'connected';
+          this.emit('connected');
+          resolve();
+        }
       });
 
       this.ws.on('message', (data: WebSocket.Data) => {
@@ -73,8 +137,9 @@ export class GodotBridge extends EventEmitter {
       });
 
       this.ws.on('close', (code: number, reason: Buffer) => {
-        this._connected = false;
+        this.state = 'disconnected';
         this.stopPing();
+        this.handshakeInfo = null;
         logger.warn('bridge', `Connection closed: ${code} ${reason.toString()}`);
         this.emit('disconnected');
         this.rejectAllPending(new Error('Connection closed'));
@@ -83,7 +148,7 @@ export class GodotBridge extends EventEmitter {
 
       this.ws.on('error', (err: Error) => {
         logger.error('bridge', 'WebSocket error', { error: err.message });
-        if (!this._connected) {
+        if (this.state === 'connecting') {
           reject(err);
         }
         this.emit('error', err);
@@ -95,6 +160,19 @@ export class GodotBridge extends EventEmitter {
     });
   }
 
+  private async performHandshake(): Promise<void> {
+    this.loadSessionToken();
+    const result = (await this.rawSendCommand('system_handshake', {
+      protocol_version: '2.0.0',
+      session_token: this.sessionToken,
+    })) as HandshakeInfo;
+
+    this.handshakeInfo = result;
+    if (result.session_token && !this.sessionToken) {
+      this.sessionToken = result.session_token;
+    }
+  }
+
   async disconnect(): Promise<void> {
     this.reconnectCount = this.config.reconnectAttempts;
     this.stopPing();
@@ -103,16 +181,33 @@ export class GodotBridge extends EventEmitter {
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
     }
-    this._connected = false;
+    this.state = 'disconnected';
   }
 
   async sendCommand(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
-    if (!this._connected || !this.ws) {
+    if (this.state === 'handshaking' && method !== 'system_handshake') {
+      if (this.handshakePromise) {
+        await this.handshakePromise;
+      }
+    }
+    if (!this.connected || !this.ws) {
       throw new Error('Not connected to Godot');
+    }
+    return this.rawSendCommand(method, params);
+  }
+
+  private async rawSendCommand(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket is not open');
     }
 
     const id = crypto.randomUUID();
-    const command: GodotCommand = { id, method, params };
+    const command: GodotCommand = {
+      id,
+      method,
+      params,
+      token: this.sessionToken,
+    };
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -121,7 +216,6 @@ export class GodotBridge extends EventEmitter {
       }, this.config.commandTimeout);
 
       this.pendingRequests.set(id, { resolve, reject, timer });
-
       logger.debug('bridge', `Sending command: ${method}`, { id, params });
       this.ws!.send(JSON.stringify(command));
     });
@@ -156,7 +250,7 @@ export class GodotBridge extends EventEmitter {
 
   private startPing(): void {
     this.pingTimer = setInterval(() => {
-      if (this.ws && this._connected) {
+      if (this.ws && (this.state === 'connected' || this.state === 'handshaking')) {
         this.ws.ping();
       }
     }, this.config.pingInterval);
@@ -177,7 +271,10 @@ export class GodotBridge extends EventEmitter {
     }
 
     this.reconnectCount++;
-    logger.info('bridge', `Reconnecting in ${this.config.reconnectDelay}ms (attempt ${this.reconnectCount}/${this.config.reconnectAttempts})`);
+    logger.info(
+      'bridge',
+      `Reconnecting in ${this.config.reconnectDelay}ms (attempt ${this.reconnectCount}/${this.config.reconnectAttempts})`
+    );
 
     setTimeout(() => {
       this.connect().catch(() => {

@@ -3,35 +3,35 @@ extends Node
 
 
 func classdb_query(params: Dictionary) -> Variant:
-	var class_name: String = params.get("class_name", "")
-	if class_name.is_empty():
+	var requested_class: String = params.get("class_name", "")
+	if requested_class.is_empty():
 		return {"error": {"code": -32602, "message": "Class name is required"}}
 
-	if not ClassDB.class_exists(class_name):
-		return {"error": {"code": -32602, "message": "Class not found: " + class_name}}
+	if not ClassDB.class_exists(requested_class):
+		return {"error": {"code": -32602, "message": "Class not found: " + requested_class}}
 
 	var info: Dictionary = {
-		"name": class_name,
-		"parent": ClassDB.get_parent_class(class_name),
-		"inheritance": _get_inheritance(class_name),
-		"constants": ClassDB.class_get_integer_constant_list(class_name),
-		"signals": ClassDB.class_get_signal_list(class_name),
-		"methods_count": ClassDB.class_get_method_count(class_name),
+		"name": requested_class,
+		"parent": ClassDB.get_parent_class(requested_class),
+		"inheritance": _get_inheritance(requested_class),
+		"constants": ClassDB.class_get_integer_constant_list(requested_class),
+		"signals": ClassDB.class_get_signal_list(requested_class),
+		"methods_count": ClassDB.class_get_method_list(requested_class).size(),
 	}
 	return info
 
 
 func classdb_list_methods(params: Dictionary) -> Variant:
-	var class_name: String = params.get("class_name", "")
+	var requested_class: String = params.get("class_name", "")
 	var include_inherited: bool = params.get("include_inherited", false)
-	if class_name.is_empty():
+	if requested_class.is_empty():
 		return {"error": {"code": -32602, "message": "Class name is required"}}
 
-	if not ClassDB.class_exists(class_name):
-		return {"error": {"code": -32602, "message": "Class not found: " + class_name}}
+	if not ClassDB.class_exists(requested_class):
+		return {"error": {"code": -32602, "message": "Class not found: " + requested_class}}
 
 	var methods: Array = []
-	var method_list: Array = ClassDB.class_get_method_list(class_name, include_inherited)
+	var method_list: Array = ClassDB.class_get_method_list(requested_class, include_inherited)
 	for method in method_list:
 		methods.append({
 			"name": method["name"],
@@ -39,7 +39,7 @@ func classdb_list_methods(params: Dictionary) -> Variant:
 			"return": method.get("return", {}),
 			"flags": method.get("flags", 0),
 		})
-	return {"class": class_name, "methods": methods, "count": methods.size()}
+	return {"class": requested_class, "methods": methods, "count": methods.size()}
 
 
 func classdb_list_classes(params: Dictionary) -> Variant:
@@ -56,9 +56,9 @@ func classdb_list_classes(params: Dictionary) -> Variant:
 	return {"classes": all_classes, "count": all_classes.size()}
 
 
-func _get_inheritance(class_name: String) -> Array:
+func _get_inheritance(requested_class: String) -> Array:
 	var chain: Array = []
-	var current: String = class_name
+	var current: String = requested_class
 	while not current.is_empty():
 		chain.append(current)
 		current = ClassDB.get_parent_class(current)

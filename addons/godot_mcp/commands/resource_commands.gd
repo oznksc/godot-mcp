@@ -44,7 +44,7 @@ func resource_save(params: Dictionary) -> Variant:
 	if res == null:
 		return {"error": {"code": -32603, "message": "Failed to load resource: " + path}}
 
-	var err: Error = ResourceSaver.save(path, res)
+	var err: Error = ResourceSaver.save(res, path)
 	if err != OK:
 		return {"error": {"code": -32603, "message": "Failed to save resource: " + error_string(err)}}
 	return {"success": true, "path": path}
@@ -76,15 +76,16 @@ func resource_create(params: Dictionary) -> Variant:
 	if not ClassDB.class_exists(type):
 		return {"error": {"code": -32602, "message": "Unknown resource type: " + type}}
 
-	var res: RefCounted = ClassDB.instantiate(type)
-	if res == null:
+	var instance: Variant = ClassDB.instantiate(type)
+	if instance == null or not instance is Resource:
 		return {"error": {"code": -32603, "message": "Failed to create resource of type: " + type}}
+	var res: Resource = instance
 
 	for key in properties:
 		res.set(key, properties[key])
 
 	if not path.is_empty():
-		var err: Error = ResourceSaver.save(path, res)
+		var err: Error = ResourceSaver.save(res, path)
 		if err != OK:
 			return {"error": {"code": -32603, "message": "Failed to save resource: " + error_string(err)}}
 

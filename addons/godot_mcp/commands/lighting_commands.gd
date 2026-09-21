@@ -75,7 +75,7 @@ func lighting_create_environment(params: Dictionary) -> Variant:
 	for key in properties:
 		env.set(key, properties[key])
 
-	var err: Error = ResourceSaver.save(path, env)
+	var err: Error = ResourceSaver.save(env, path)
 	if err != OK:
 		return {"error": {"code": -32603, "message": "Failed to save environment: " + error_string(err)}}
 	return {"success": true, "path": path}

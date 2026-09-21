@@ -74,4 +74,50 @@ export function registerRuntimeTools(server: McpServer, bridge: GodotBridge): vo
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     }
   );
+
+  server.tool(
+    'runtime_get_remote_scene_tree',
+    'Get the live scene tree of the running game',
+    {},
+    async () => {
+      const result = await bridge.sendCommand('runtime_get_remote_scene_tree');
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'runtime_get_node_properties',
+    'Read real-time properties of any active node in the running game',
+    {
+      path: z.string().describe('Node path in running scene tree (e.g. "/root/Main/Player")'),
+    },
+    async ({ path }) => {
+      const result = await bridge.sendCommand('runtime_get_node_properties', { path });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'runtime_set_node_property',
+    'Dynamically modify a property on an active node in the running game without restarting',
+    {
+      path: z.string().describe('Node path in running scene tree'),
+      property: z.string().describe('Property name to change'),
+      value: z.any().describe('New property value'),
+    },
+    async ({ path, property, value }) => {
+      const result = await bridge.sendCommand('runtime_set_node_property', { path, property, value });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'runtime_get_performance_metrics',
+    'Get real-time engine profiler and performance metrics (FPS, frame time, draw calls, memory, active physics objects)',
+    {},
+    async () => {
+      const result = await bridge.sendCommand('runtime_get_performance_metrics');
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
 }

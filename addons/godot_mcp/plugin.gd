@@ -1,6 +1,8 @@
 @tool
 extends EditorPlugin
 
+const SessionAuth = preload("res://addons/godot_mcp/core/session_auth.gd")
+
 const WS_PORT := 6505
 
 var _websocket_client: Node
@@ -14,6 +16,8 @@ func _ready() -> void:
 
 
 func _enter_tree() -> void:
+	SessionAuth.init_session()
+
 	_websocket_client = preload("res://addons/godot_mcp/core/websocket_client.gd").new()
 	_websocket_client.name = "MCPWebSocketClient"
 	add_child(_websocket_client)
@@ -36,7 +40,7 @@ func _enter_tree() -> void:
 	_websocket_client.message_received.connect(_on_message)
 
 	_websocket_client.start(WS_PORT)
-	print("[Godot MCP] Plugin loaded, listening on port ", WS_PORT)
+	print("[Godot MCP v2] Plugin loaded, listening on port ", WS_PORT)
 
 
 func _exit_tree() -> void:
@@ -49,7 +53,7 @@ func _exit_tree() -> void:
 		_status_panel.queue_free()
 	if _log_panel:
 		_log_panel.queue_free()
-	print("[Godot MCP] Plugin unloaded")
+	print("[Godot MCP v2] Plugin unloaded")
 
 
 func _on_connected() -> void:
@@ -64,6 +68,6 @@ func _on_disconnected() -> void:
 
 func _on_message(message: String) -> void:
 	_log_panel.add_log("Received: " + message.left(200))
-	var response: Dictionary = _command_router.execute(message)
+	var response: Dictionary = await _command_router.execute(message)
 	_websocket_client.send_response(response)
 	_log_panel.add_log("Sent: " + JSON.stringify(response).left(200))

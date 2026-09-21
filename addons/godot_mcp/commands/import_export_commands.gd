@@ -70,24 +70,32 @@ func export_run(params: Dictionary) -> Variant:
 	if preset.is_empty():
 		return {"error": {"code": -32602, "message": "Preset name is required"}}
 
-	# Find the preset
-	var preset_idx: int = -1
-	for i in range(EditorExport.export_presets.size()):
-		if EditorExport.export_presets[i].name == preset:
-			preset_idx = i
+	var preset_found := false
+	for item in _load_export_presets():
+		if item["name"] == preset:
+			preset_found = true
 			break
 
-	if preset_idx == -1:
+	if not preset_found:
 		return {"error": {"code": -32602, "message": "Export preset not found: " + preset}}
 
 	return {"success": true, "message": "Export initiated", "preset": preset, "output": output_path}
 
 
 func export_get_presets(_params: Dictionary) -> Variant:
+	return {"presets": _load_export_presets()}
+
+
+func _load_export_presets() -> Array:
+	var config := ConfigFile.new()
+	if config.load("res://export_presets.cfg") != OK:
+		return []
 	var presets: Array = []
-	for preset in EditorExport.export_presets:
-		presets.append({
-			"name": preset.name,
-			"platform": preset.platform,
-		})
-	return {"presets": presets}
+	for section in config.get_sections():
+		if section.begins_with("preset.") and not section.contains(".options"):
+			presets.append({
+				"name": config.get_value(section, "name", ""),
+				"platform": config.get_value(section, "platform", ""),
+				"export_path": config.get_value(section, "export_path", ""),
+			})
+	return presets

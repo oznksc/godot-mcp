@@ -15,7 +15,7 @@ var _listening: bool = false
 func start(port: int = 6505) -> void:
 	_port = port
 	_tcp_server = TCPServer.new()
-	var err: Error = _tcp_server.listen("127.0.0.1", _port)
+	var err: Error = _tcp_server.listen(_port, "127.0.0.1")
 	if err != OK:
 		push_error("[Godot MCP] Failed to listen on port " + str(_port) + ": " + error_string(err))
 		return

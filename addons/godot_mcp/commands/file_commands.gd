@@ -1,9 +1,24 @@
 @tool
 extends Node
 
+const PathSandbox = preload("res://addons/godot_mcp/core/path_sandbox.gd")
+
+## File management commands for Godot MCP v2 with PathSandbox and Transaction safety.
+
+var _transaction_manager: Node
+
+
+func setup(tx_mgr: Node = null) -> void:
+	_transaction_manager = tx_mgr
+
 
 func file_list_dir(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "res://")
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+
+	path = check["path"]
 	var entries: Array = []
 	var dir: DirAccess = DirAccess.open(path)
 	if dir == null:
@@ -21,9 +36,11 @@ func file_list_dir(params: Dictionary) -> Variant:
 
 func file_read(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
-	if path.is_empty():
-		return {"error": {"code": -32602, "message": "Path is required"}}
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
 
+	path = check["path"]
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return {"error": {"code": -32603, "message": "Failed to read file: " + path}}
@@ -35,8 +52,28 @@ func file_read(params: Dictionary) -> Variant:
 func file_write(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
 	var content: String = params.get("content", "")
-	if path.is_empty():
-		return {"error": {"code": -32602, "message": "Path is required"}}
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+
+	path = check["path"]
+
+	# Transaction backup
+	if _transaction_manager and _transaction_manager.has_method("record_file_modify"):
+		if FileAccess.file_exists(path):
+			_transaction_manager.record_file_modify(path)
+		else:
+			_transaction_manager.record_file_create(path)
+
+	# Ensure parent directory exists
+	var parts: PackedStringArray = path.replace("res://", "").split("/")
+	if parts.size() > 1:
+		var dir_path: String = "res://"
+		for i in range(parts.size() - 1):
+			dir_path += parts[i] + "/"
+			var dir := DirAccess.open("res://")
+			if dir and not dir.dir_exists_absolute(dir_path):
+				dir.make_dir_recursive_absolute(dir_path)
 
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
@@ -49,8 +86,15 @@ func file_write(params: Dictionary) -> Variant:
 
 func file_delete(params: Dictionary) -> Variant:
 	var path: String = params.get("path", "")
-	if path.is_empty():
-		return {"error": {"code": -32602, "message": "Path is required"}}
+	var check: Dictionary = PathSandbox.validate_path(path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+
+	path = check["path"]
+
+	# Transaction backup
+	if _transaction_manager and _transaction_manager.has_method("record_file_modify"):
+		_transaction_manager.record_file_modify(path)
 
 	var dir: DirAccess = DirAccess.open("res://")
 	if dir == null:
@@ -66,8 +110,20 @@ func file_delete(params: Dictionary) -> Variant:
 func file_rename(params: Dictionary) -> Variant:
 	var old_path: String = params.get("old_path", "")
 	var new_path: String = params.get("new_path", "")
-	if old_path.is_empty() or new_path.is_empty():
-		return {"error": {"code": -32602, "message": "Both old_path and new_path are required"}}
+
+	var check_old: Dictionary = PathSandbox.validate_path(old_path)
+	var check_new: Dictionary = PathSandbox.validate_path(new_path)
+	if not check_old.get("valid", false):
+		return {"error": {"code": -32603, "message": check_old.get("error", "Access denied")}}
+	if not check_new.get("valid", false):
+		return {"error": {"code": -32603, "message": check_new.get("error", "Access denied")}}
+
+	old_path = check_old["path"]
+	new_path = check_new["path"]
+
+	if _transaction_manager and _transaction_manager.has_method("record_file_modify"):
+		_transaction_manager.record_file_modify(old_path)
+		_transaction_manager.record_file_create(new_path)
 
 	var dir: DirAccess = DirAccess.open("res://")
 	if dir == null:
@@ -85,6 +141,12 @@ func file_search(params: Dictionary) -> Variant:
 	var search_path: String = params.get("path", "res://")
 	var type_filter: String = params.get("type", "")
 	var content_search: bool = params.get("content_search", false)
+
+	var check: Dictionary = PathSandbox.validate_path(search_path)
+	if not check.get("valid", false):
+		return {"error": {"code": -32603, "message": check.get("error", "Access denied")}}
+
+	search_path = check["path"]
 	if query.is_empty():
 		return {"error": {"code": -32602, "message": "Query is required"}}
 
@@ -95,6 +157,8 @@ func file_search(params: Dictionary) -> Variant:
 
 
 func _search_recursive(dir: EditorFileSystemDirectory, query: String, type_filter: String, content_search: bool, results: Array) -> void:
+	if dir == null:
+		return
 	for i in range(dir.get_file_count()):
 		var file_name: String = dir.get_file(i)
 		var file_path: String = dir.get_path() + "/" + file_name

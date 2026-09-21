@@ -121,9 +121,9 @@ func ui_set_anchors(params: Dictionary) -> Variant:
 		"CenterRight":
 			node.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 		"TopCenter":
-			node.set_anchors_preset(Control.PRESET_TOP_CENTER)
+			node.set_anchors_preset(Control.PRESET_CENTER_TOP)
 		"BottomCenter":
-			node.set_anchors_preset(Control.PRESET_BOTTOM_CENTER)
+			node.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 		"LeftWide":
 			node.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 		"RightWide":
